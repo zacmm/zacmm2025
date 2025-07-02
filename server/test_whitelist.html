@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mattermost IP Whitelist Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        pre { background-color: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Mattermost IP Whitelist Test</h1>
+    
+    <div class="test-section info">
+        <h3>Current Status</h3>
+        <p><strong>Server URL:</strong> <span id="serverUrl">http://localhost:8065</span></p>
+        <p><strong>Your IP Address:</strong> <span id="currentIP">Loading...</span></p>
+        <p><strong>Server Status:</strong> <span id="serverStatus">Checking...</span></p>
+    </div>
+
+    <div class="test-section">
+        <h3>Test 1: Server Ping (Should Always Work)</h3>
+        <p>This endpoint is excluded from whitelist checks and should always work.</p>
+        <button onclick="testPing()">Test Ping</button>
+        <pre id="pingResult">Click button to test</pre>
+    </div>
+
+    <div class="test-section">
+        <h3>Test 2: Login Attempt (Should Work Without Whitelist)</h3>
+        <p>Login endpoint is excluded from whitelist checks.</p>
+        <button onclick="testLogin()">Test Login</button>
+        <pre id="loginResult">Click button to test</pre>
+    </div>
+
+    <div class="test-section">
+        <h3>Test 3: Authenticated Endpoint (Would Be Blocked Without Whitelist)</h3>
+        <p>This simulates what would happen when a non-whitelisted user tries to access protected endpoints.</p>
+        <button onclick="testProtectedEndpoint()">Test Protected Endpoint</button>
+        <pre id="protectedResult">Click button to test</pre>
+    </div>
+
+    <div class="test-section">
+        <h3>How Whitelist Blocking Works</h3>
+        <ul>
+            <li><strong>System Admins:</strong> Bypass IP whitelist completely</li>
+            <li><strong>Regular Users:</strong> Must have their IP address in the whitelist</li>
+            <li><strong>Excluded Paths:</strong> Login, logout, ping, static files, etc. are not checked</li>
+            <li><strong>Blocked Access:</strong> Returns HTTP 403 Forbidden with detailed error message</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h3>API Endpoints for Whitelist Management</h3>
+        <ul>
+            <li><strong>GET /api/v4/users/{user_id}/whitelist</strong> - Get user's whitelisted IPs</li>
+            <li><strong>POST /api/v4/users/{user_id}/whitelist</strong> - Add IP to user's whitelist</li>
+            <li><strong>DELETE /api/v4/users/{user_id}/whitelist</strong> - Remove IP from user's whitelist</li>
+        </ul>
+    </div>
+
+    <script>
+        // Get current IP address
+        fetch('https://api.ipify.org?format=json')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('currentIP').textContent = data.ip;
+            })
+            .catch(() => {
+                document.getElementById('currentIP').textContent = 'Could not determine IP';
+            });
+
+        // Test server ping
+        async function testPing() {
+            const result = document.getElementById('pingResult');
+            result.textContent = 'Testing...';
+            
+            try {
+                const response = await fetch('http://localhost:8065/api/v4/system/ping');
+                const data = await response.json();
+                result.textContent = `Status: ${response.status}\nResponse: ${JSON.stringify(data, null, 2)}`;
+                result.parentElement.className = 'test-section success';
+            } catch (error) {
+                result.textContent = `Error: ${error.message}`;
+                result.parentElement.className = 'test-section error';
+            }
+        }
+
+        // Test login endpoint
+        async function testLogin() {
+            const result = document.getElementById('loginResult');
+            result.textContent = 'Testing...';
+            
+            try {
+                const response = await fetch('http://localhost:8065/api/v4/users/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        login_id: 'test@example.com',
+                        password: 'password123'
+                    })
+                });
+                const data = await response.json();
+                result.textContent = `Status: ${response.status}\nResponse: ${JSON.stringify(data, null, 2)}`;
+                result.parentElement.className = 'test-section success';
+            } catch (error) {
+                result.textContent = `Error: ${error.message}`;
+                result.parentElement.className = 'test-section error';
+            }
+        }
+
+        // Test protected endpoint (would be blocked without whitelist)
+        async function testProtectedEndpoint() {
+            const result = document.getElementById('protectedResult');
+            result.textContent = 'Testing...';
+            
+            try {
+                const response = await fetch('http://localhost:8065/api/v4/users/me', {
+                    headers: {
+                        'Authorization': 'Bearer invalid-token'
+                    }
+                });
+                const data = await response.json();
+                result.textContent = `Status: ${response.status}\nResponse: ${JSON.stringify(data, null, 2)}`;
+                result.parentElement.className = 'test-section success';
+            } catch (error) {
+                result.textContent = `Error: ${error.message}`;
+                result.parentElement.className = 'test-section error';
+            }
+        }
+
+        // Check server status on load
+        window.onload = function() {
+            fetch('http://localhost:8065/api/v4/system/ping')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('serverStatus').textContent = 'Online';
+                    document.getElementById('serverStatus').style.color = 'green';
+                })
+                .catch(() => {
+                    document.getElementById('serverStatus').textContent = 'Offline';
+                    document.getElementById('serverStatus').style.color = 'red';
+                });
+        };
+    </script>
+</body>
+</html> 
