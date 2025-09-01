@@ -14,7 +14,7 @@ sudo systemctl stop mattermost 2>/dev/null || sudo pkill -f mattermost || echo "
 sleep 2
 
 echo "2️⃣ 編譯前端"
-cd webapp && make build && cd .. || { echo "❌ 前端編譯失敗"; exit 1; }
+cd server && make build && cd .. || { echo "❌ 前端編譯失敗"; exit 1; }
 
 echo "3️⃣ 編譯後端"
 cd server && make build-linux && cd .. || { echo "❌ 後端編譯失敗"; exit 1; }
