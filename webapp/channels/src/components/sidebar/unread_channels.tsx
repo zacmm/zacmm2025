@@ -9,6 +9,8 @@ import {readMultipleChannels} from 'mattermost-redux/actions/channels';
 
 import {trackEvent} from 'actions/telemetry_actions';
 import {getUnreadChannels} from 'selectors/views/channel_sidebar';
+import {getMyChannelMemberships} from 'mattermost-redux/selectors/entities/channels';
+import {isChannelMuted} from 'mattermost-redux/utils/channel_utils';
 
 import * as Menu from 'components/menu';
 
@@ -26,8 +28,15 @@ export default function UnreadChannels({
     setChannelRef,
 }: Props) {
     const intl = useIntl();
-    const unreadChannels = useSelector(getUnreadChannels);
+    const allUnreadChannels = useSelector(getUnreadChannels);
+    const myChannelMemberships = useSelector(getMyChannelMemberships);
     const dispatch = useDispatch();
+
+    // Filter out muted channels from unread channels for display in unread section
+    const unreadChannels = allUnreadChannels.filter(channel => {
+        const membership = myChannelMemberships[channel.id];
+        return !(membership && isChannelMuted(membership));
+    });
 
     const handleViewCategory = useCallback(() => {
         if (!unreadChannels.length) {
@@ -44,7 +53,9 @@ export default function UnreadChannels({
 
     return (
         <div className='SidebarChannelGroup dropDisabled a11y__section'>
-            <SidebarCategoryHeaderStatic displayName={intl.formatMessage({id: 'sidebar.types.unreadChannels.displayName', defaultMessage: 'UNREADS'})}>
+            <SidebarCategoryHeaderStatic 
+                displayName={intl.formatMessage({id: 'sidebar.types.unreadChannels.displayName', defaultMessage: 'UNREADS'})}
+            >
                 <SidebarCategoryGenericMenu
                     id='unreads'
                     name={intl.formatMessage({id: 'sidebar.types.unreadChannels.ariaLabel', defaultMessage: 'Unread'})}

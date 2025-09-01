@@ -1,0 +1,297 @@
+// Custom message styling for Mattermost
+// 客製化訊息樣式
+
+// 1. 自己的訊息在右邊 (Own messages aligned to the right) - 使用 flex 布局
+.post {
+    &.current--user {
+        // 整體容器右對齊
+        margin-left: auto;
+        width: 100%;
+        
+        // 主要內容區域使用 flex 重新排列
+        .post__content {
+            display: flex;
+            flex-direction: row;
+            align-items: flex-start;
+            justify-content: flex-end;
+            max-width: 100%;
+            margin: 0;
+            
+            // 大頭照在最右邊
+            .post__img {
+                order: 3;
+                margin-left: 8px;
+                margin-right: 0;
+                flex-shrink: 0;
+                align-self: flex-start;
+            }
+            
+            // 內容區域（包含 header 和 body）
+            > div:not(.post__img) {
+                order: 2;
+                display: flex;
+                flex-direction: column;
+                align-items: flex-end;
+                max-width: 70%;
+                
+                // 上方：頭部信息（時間 + 名稱）
+                .post__header {
+                    display: flex;
+                    flex-direction: row;
+                    align-items: center;
+                    justify-content: flex-end;
+                    width: 100%;
+                    margin-bottom: 4px;
+                    
+                    // 時間在前面
+                    .post__time {
+                        order: 1;
+                        margin-right: 8px;
+                        margin-left: 0;
+                    }
+                    
+                    // 名稱在後面
+                    .user-popover {
+                        order: 2;
+                        margin-left: 0;
+                        margin-right: 0;
+                    }
+                }
+                
+                // 下方：訊息內容右對齊
+                .post__body {
+                    text-align: left;
+                    width: fit-content;
+                    max-width: 100%;
+                    margin: 0;
+                }
+            }
+        }
+    }
+}
+
+// 文字底框樣式 (Message background styles)
+// 所有訊息都有底框 - 應用在訊息內容上，不是整個 content
+.post .post__body .post-message__text {
+    display: table;
+    margin: 0 auto 0 0;
+    padding: 10px 33px 10px 12px; // 增加左邊 padding：5px → 12px
+    position: relative;
+    table-layout: fixed;
+    border-radius: 10px 10px 10px 0;
+    background-color: rgba(var(--center-channel-color-rgb), 0.04);
+}
+
+// 自己的訊息特殊樣式
+.post.current--user .post__body .post-message__text {
+    padding: 10px 12px 10px 33px; // 增加右邊 padding：5px → 12px
+    border-radius: 10px 10px 0 10px; // 右下直角
+    margin: 0 0 0 auto; // 右對齊
+}
+
+// 2. 未讀消息置頂 (Unread messages pinned to top)
+// 針對 UnreadChannels 組件的樣式（使用 dropDisabled 類別識別）
+.SidebarChannelGroup.dropDisabled {
+    order: -1; // 確保未讀分組在最上方
+    margin-bottom: 16px; // 與其他分組有明顯間距
+    
+    // 未讀分組的標題樣式
+    .SidebarCategoryHeaderStatic {
+        background-color: rgba(var(--sidebar-text-active-rgb), 0.08);
+        border-radius: 6px;
+        margin: 4px 8px;
+        padding: 8px 12px;
+        border: 1px solid rgba(var(--sidebar-text-active-rgb), 0.12);
+        position: relative;
+        
+        // 標題文字樣式
+        .SidebarChannelGroupHeader_text {
+            color: var(--sidebar-text-active);
+            font-weight: 600;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+        
+        .SidebarChannelGroupHeader_groupButton {
+            width: 100%;
+        }
+    }
+    
+    // 未讀分組內的頻道樣式強化
+    .SidebarChannel {
+        background-color: rgba(var(--sidebar-text-active-rgb), 0.05);
+        border-left: 3px solid var(--online-indicator);
+        border-radius: 0 6px 6px 0;
+        margin: 2px 8px 2px 0;
+        
+        &:hover {
+            background-color: rgba(var(--sidebar-text-active-rgb), 0.1);
+        }
+        
+        // 未讀訊息數量 badge 樣式 - 藍底白字圓形
+        .badge {
+            background-color: #1e88e5 !important; // 藍底
+            color: #ffffff !important; // 白字
+            font-weight: 600;
+            font-size: 11px;
+            border-radius: 50% !important; // 圓形
+            min-width: 20px !important;
+            height: 20px !important;
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            padding: 0 !important;
+            
+            // 如果數字太大，改為橢圓形
+            &.badge-max-number {
+                border-radius: 10px !important;
+                padding: 0 6px !important;
+                min-width: 24px !important;
+            }
+        }
+        
+        // 頻道名稱樣式
+        .SidebarLink {
+            font-weight: 600;
+            color: var(--sidebar-text-active);
+        }
+    }
+}
+
+// 老版樣式保留（如果有其他地方用到）
+.sidebar-item {
+    &.unread-title {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        background-color: var(--sidebar-bg);
+        border-bottom: 1px solid var(--sidebar-text-08);
+        
+        &::before {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--sidebar-text-60);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 8px 16px 4px;
+            display: block;
+        }
+    }
+    
+    // 未讀頻道樣式強化
+    &.unread {
+        background-color: var(--sidebar-text-08);
+        border-left: 3px solid var(--button-bg);
+        font-weight: 600;
+        
+        &:hover {
+            background-color: var(--sidebar-text-16);
+        }
+        
+        .badge {
+            background-color: var(--button-bg);
+            color: var(--button-color);
+            font-weight: 600;
+        }
+    }
+}
+
+// 3. 文字底框 (Text background/border styling)
+.post__body {
+    // 基本文字容器樣式
+    .markdown__text {
+        padding: 2px 4px;
+        background-color: rgba(var(--center-channel-color-rgb), 0.04);
+        border-radius: 3px;
+        border: 1px solid transparent;
+        
+        // 當有內容時顯示底框
+        &:not(:empty) {
+            border-color: rgba(var(--center-channel-color-rgb), 0.12);
+        }
+        
+        // 特殊內容類型的樣式
+        &.mention-highlight {
+            background-color: var(--mention-highlight-bg);
+            border-color: var(--mention-highlight-link);
+        }
+        
+        &.search-highlight {
+            background-color: var(--search-highlight-bg);
+            border-color: var(--search-highlight-border);
+        }
+    }
+    
+    // 程式碼區塊樣式
+    pre {
+        background-color: var(--center-channel-color-08);
+        border: 1px solid var(--center-channel-color-16);
+        border-radius: 4px;
+        padding: 8px;
+        
+        code {
+            background: transparent;
+            border: none;
+        }
+    }
+    
+    // 行內程式碼樣式
+    code:not(pre code) {
+        background-color: var(--center-channel-color-08);
+        border: 1px solid var(--center-channel-color-16);
+        border-radius: 3px;
+        padding: 2px 4px;
+        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    }
+    
+    // 引用樣式
+    blockquote {
+        border-left: 4px solid var(--center-channel-color-32);
+        background-color: var(--center-channel-color-04);
+        padding: 8px 16px;
+        margin: 8px 0;
+        border-radius: 0 4px 4px 0;
+    }
+}
+
+// 4. 響應式設計調整 (Responsive design adjustments)
+@media (max-width: 768px) {
+    .post.current-user .post__content {
+        max-width: 85%;
+    }
+    
+    .sidebar-item.unread-title::before {
+        font-size: 10px;
+        padding: 6px 12px 3px;
+    }
+}
+
+// 5. 深色模式適配 (Dark mode adaptations)
+.app__body.theme--dark {
+    .post.current-user .post__body {
+        background-color: var(--button-bg);
+        border-color: var(--button-bg);
+    }
+    
+    .post:not(.current-user) .post__body {
+        background-color: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.16);
+    }
+    
+    .sidebar-item.unread {
+        background-color: rgba(255, 255, 255, 0.08);
+    }
+}
+
+// 6. 高對比模式 (High contrast mode)
+@media (prefers-contrast: high) {
+    .post__body .markdown__text {
+        border-color: var(--center-channel-color);
+        background-color: var(--center-channel-bg);
+    }
+    
+    .post.current-user .post__body {
+        border: 2px solid var(--button-bg);
+    }
+}

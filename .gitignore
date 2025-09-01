@@ -127,6 +127,17 @@ web/sass-files/sass/.sass-cache/
 # Default local file storage
 data/*
 webapp/data/*
+webapp/.npm-cache/*
+
+# Claude AI files
+**/CLAUDE.local.md
+CLAUDE.md
+.claude/
+
+# Scripts containing sensitive information
+scripts/fix_emoji_images.sh
+scripts/fix_team_permissions.sh 
+scripts/test_team_join.sh
 api/data/*
 api4/data/*
 app/data/*
@@ -163,3 +174,4 @@ docker-compose.override.yaml
 **/CLAUDE.local.md
 CLAUDE.md
 .cursorrules
+.claude/
