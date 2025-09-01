@@ -25,7 +25,9 @@ if sudo systemctl start mattermost 2>/dev/null; then
     echo "使用 systemd 啟動"
 else
     echo "使用直接啟動"
-    cd server && sudo -u mattermost ./bin/mattermost -c config/config.json > /dev/null 2>&1 & && cd ..
+    cd server
+    sudo -u mattermost ./bin/mattermost -c config/config.json > /dev/null 2>&1 &
+    cd ..
 fi
 
 echo "等待啟動..."
