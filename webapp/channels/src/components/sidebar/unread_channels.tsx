@@ -44,7 +44,9 @@ export default function UnreadChannels({
 
     return (
         <div className='SidebarChannelGroup dropDisabled a11y__section'>
-            <SidebarCategoryHeaderStatic displayName={intl.formatMessage({id: 'sidebar.types.unreadChannels.displayName', defaultMessage: 'UNREADS'})}>
+            <SidebarCategoryHeaderStatic 
+                displayName={intl.formatMessage({id: 'sidebar.types.unreadChannels.displayName', defaultMessage: 'UNREADS'})}
+            >
                 <SidebarCategoryGenericMenu
                     id='unreads'
                     name={intl.formatMessage({id: 'sidebar.types.unreadChannels.ariaLabel', defaultMessage: 'Unread'})}

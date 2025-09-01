@@ -232,7 +232,8 @@ export const shouldShowUnreadsCategory: (state: GlobalState, userPreferences?: P
         }
 
         // The user setting is not set, so use the system default
-        return serverDefault === General.DEFAULT_ON;
+        // 預設開啟未讀分組功能
+        return serverDefault === General.DEFAULT_ON || true;
     },
 );
 
