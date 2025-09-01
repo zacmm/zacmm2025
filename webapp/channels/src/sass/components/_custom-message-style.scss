@@ -1,63 +1,92 @@
 // Custom message styling for Mattermost
 // 客製化訊息樣式
 
-// 1. 自己的訊息在右邊 (Own messages aligned to the right)
+// 1. 自己的訊息在右邊 (Own messages aligned to the right) - 使用 flex 布局
 .post {
-    &.current-user {
-        .post__content {
-            margin-left: auto;
-            margin-right: 0;
-            text-align: right;
-            max-width: 70%;
-            
-            .post__body {
-                background-color: var(--button-bg);
-                color: var(--button-color);
-                padding: 8px 12px;
-                border-radius: 12px 12px 4px 12px;
-                margin-left: auto;
-                display: inline-block;
-                text-align: left; // Keep text left-aligned within bubble
-            }
-        }
+    &.current--user {
+        // 整體容器右對齊
+        margin-left: auto;
+        width: 100%;
         
-        .post__header {
+        // 主要內容區域使用 flex 重新排列
+        .post__content {
+            display: flex;
+            flex-direction: row;
+            align-items: flex-start;
             justify-content: flex-end;
-            text-align: right;
+            max-width: 100%;
+            margin: 0;
             
-            .user-popover {
+            // 大頭照在最右邊
+            .post__img {
+                order: 3;
+                margin-left: 8px;
+                margin-right: 0;
+                flex-shrink: 0;
+                align-self: flex-start;
+            }
+            
+            // 內容區域（包含 header 和 body）
+            > div:not(.post__img) {
                 order: 2;
+                display: flex;
+                flex-direction: column;
+                align-items: flex-end;
+                max-width: 70%;
+                
+                // 上方：頭部信息（時間 + 名稱）
+                .post__header {
+                    display: flex;
+                    flex-direction: row;
+                    align-items: center;
+                    justify-content: flex-end;
+                    width: 100%;
+                    margin-bottom: 4px;
+                    
+                    // 時間在前面
+                    .post__time {
+                        order: 1;
+                        margin-right: 8px;
+                        margin-left: 0;
+                    }
+                    
+                    // 名稱在後面
+                    .user-popover {
+                        order: 2;
+                        margin-left: 0;
+                        margin-right: 0;
+                    }
+                }
+                
+                // 下方：訊息內容右對齊
+                .post__body {
+                    text-align: left;
+                    width: fit-content;
+                    max-width: 100%;
+                    margin: 0;
+                }
             }
-            
-            .post__time {
-                order: 1;
-                margin-right: 8px;
-                margin-left: 0;
-            }
-        }
-        
-        .post__img {
-            order: 2;
-            margin-left: 8px;
-            margin-right: 0;
         }
     }
-    
-    // 其他人的訊息保持在左邊
-    &:not(.current-user) {
-        .post__content {
-            margin-left: 0;
-            margin-right: auto;
-            text-align: left;
-            
-            .post__body {
-                background-color: var(--center-channel-bg);
-                border: 1px solid var(--center-channel-color-04);
-                padding: 8px 12px;
-                border-radius: 12px 12px 12px 4px;
-            }
-        }
-    }
+}
+
+// 文字底框樣式 (Message background styles)
+// 所有訊息都有底框 - 應用在訊息內容上，不是整個 content
+.post .post__body .post-message__text {
+    display: table;
+    margin: 0 auto 0 0;
+    padding: 10px 33px 10px 12px; // 增加左邊 padding：5px → 12px
+    position: relative;
+    table-layout: fixed;
+    border-radius: 10px 10px 10px 0;
+    background-color: rgba(var(--center-channel-color-rgb), 0.04);
+}
+
+// 自己的訊息特殊樣式
+.post.current--user .post__body .post-message__text {
+    padding: 10px 12px 10px 33px; // 增加右邊 padding：5px → 12px
+    border-radius: 10px 10px 0 10px; // 右下直角
+    margin: 0 0 0 auto; // 右對齊
 }
 
 // 2. 未讀消息置頂 (Unread messages pinned to top)
