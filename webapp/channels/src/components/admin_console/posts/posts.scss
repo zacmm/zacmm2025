@@ -28,11 +28,18 @@
 .user-name {
     cursor: pointer;
     margin: 0;
-    padding: 8px 12px;
+    padding: 0 12px;
     border: 1px solid var(--center-channel-color-20);
     border-radius: 4px;
     background-color: var(--center-channel-bg);
     color: var(--center-channel-color);
+    min-width: 150px; // 擴大選單寬度
+    text-align: center;
+    height: 38px; // 統一高度，與 input group 相同
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
     
     &:hover {
         background-color: var(--center-channel-color-08);
@@ -62,9 +69,72 @@
     border: 1px solid var(--center-channel-color-20);
     border-radius: 4px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    max-height: 200px;
-    overflow-y: auto;
+    max-height: 400px; // 增加下拉選單高度以容納搜尋框和分頁
     z-index: 1001;
+    min-width: 250px; // 增加下拉選單寬度
+    display: flex;
+    flex-direction: column;
+}
+
+.user-search-container {
+    padding: 8px;
+    border-bottom: 1px solid var(--center-channel-color-08);
+    
+    .user-search-input {
+        width: 100%;
+        padding: 6px 10px;
+        border: 1px solid var(--center-channel-color-20);
+        border-radius: 3px;
+        background-color: var(--center-channel-bg);
+        color: var(--center-channel-color);
+        font-size: 13px;
+        
+        &:focus {
+            border-color: var(--button-bg);
+            outline: none;
+        }
+        
+        &::placeholder {
+            color: var(--center-channel-color-40);
+        }
+    }
+}
+
+.users-list-container {
+    flex: 1;
+    overflow-y: auto;
+    max-height: 280px;
+}
+
+.user-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px;
+    border-top: 1px solid var(--center-channel-color-08);
+    background-color: var(--center-channel-color-04);
+    font-size: 12px;
+    
+    span {
+        cursor: pointer;
+        padding: 4px 6px;
+        border-radius: 3px;
+        
+        &.active {
+            background-color: var(--button-bg);
+            color: var(--button-color);
+            
+            &:hover {
+                background-color: var(--button-bg-08);
+            }
+        }
+        
+        &.inactive {
+            color: var(--center-channel-color-40);
+            cursor: not-allowed;
+        }
+    }
 }
 
 .user-in-dropdown {
@@ -98,6 +168,8 @@
         border-radius: 4px;
         background-color: var(--center-channel-bg);
         color: var(--center-channel-color);
+        height: 38px;
+        box-sizing: border-box;
         
         &:focus {
             border-color: var(--button-bg);
@@ -110,6 +182,92 @@
     display: flex;
     align-items: center;
     gap: 8px;
+    flex: 1;
+}
+
+// 修正 Keyword 與 input 對齊問題 - 統一高度的 input-group 樣式
+.input-group--limit {
+    display: flex;
+    align-items: stretch;
+    height: 38px; // 統一高度
+    
+    .input-group-addon {
+        display: flex;
+        align-items: center;
+        padding: 0 12px;
+        background-color: var(--center-channel-color-08);
+        border: 1px solid var(--center-channel-color-20);
+        border-right: none;
+        border-radius: 4px 0 0 4px;
+        white-space: nowrap;
+        font-weight: 600;
+        color: var(--center-channel-color);
+        min-width: 80px;
+        justify-content: center;
+        height: 38px; // 明確設定高度
+    }
+    
+    .flex {
+        display: flex;
+        align-items: stretch;
+        flex: 1;
+        height: 38px; // 統一高度
+        gap: 0 !important; // 強制移除 gap，覆蓋全局 .flex 的 gap: 8px
+        margin: 0;
+        padding: 0;
+        
+        // Input 和按鈕組成完整的 input group 右半部 - 確保無縫連接
+        .form-control {
+            border-radius: 0;
+            border: 1px solid var(--center-channel-color-20);
+            border-left: none;
+            border-right: none;
+            flex: 1;
+            min-width: 200px;
+            height: 38px;
+            padding: 6px 12px;
+            box-sizing: border-box;
+            margin: 0; // 確保沒有額外 margin
+        }
+        
+        .btn {
+            border-radius: 0 4px 4px 0;
+            border: 1px solid var(--button-bg);
+            border-left: none; // 與 input 共用邊框
+            height: 38px;
+            padding: 6px 12px;
+            box-sizing: border-box;
+            background-color: var(--button-bg);
+            color: var(--button-color);
+            margin: 0; // 移除所有 margin
+            
+            &:hover {
+                background-color: var(--button-bg-08);
+            }
+            
+            // 確保按鈕緊貼 input，沒有間隙
+            &:focus, &:active {
+                z-index: 2;
+                border-color: var(--button-bg);
+            }
+        }
+        
+        // User selector 分開顯示，有間距
+        > div:last-child {
+            margin-left: 16px;
+            display: flex;
+            align-items: center;
+            height: 38px; // 統一高度
+            
+            .user-name {
+                height: 38px; // user selector 也要統一高度
+                display: flex;
+                align-items: center;
+                padding: 0 12px;
+                margin: 0;
+            }
+        }
+    }
 }
 
 .screening-info-block {

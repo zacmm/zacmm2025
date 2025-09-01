@@ -45,10 +45,17 @@ export default function Posts() {
     const [page, setPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
     const [keyword, setKeyword] = useState('');
-    const [startDate, setStartDate] = useState(new Date(0).toLocaleDateString('en-CA'));
+    const [startDate, setStartDate] = useState(() => {
+        const threeMonthsAgo = new Date();
+        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+        return threeMonthsAgo.toLocaleDateString('en-CA');
+    });
     const [endDate, setEndDate] = useState(new Date().toLocaleDateString('en-CA'));
     const [users, setUsers] = useState<User[]>([]);
     const [showUserDropdown, setShowUserDropdown] = useState(false);
+    const [userSearchQuery, setUserSearchQuery] = useState('');
+    const [userPage, setUserPage] = useState(0);
+    const [usersPerPage] = useState(10);
 
     useEffect(() => {
         getUsers();
@@ -202,6 +209,44 @@ export default function Posts() {
         }
     };
 
+    const getFilteredUsers = () => {
+        if (!userSearchQuery) {
+            return users;
+        }
+        return users.filter(user => 
+            user.username.toLowerCase().includes(userSearchQuery.toLowerCase())
+        );
+    };
+
+    const getPaginatedUsers = () => {
+        const filteredUsers = getFilteredUsers();
+        const startIndex = userPage * usersPerPage;
+        const endIndex = startIndex + usersPerPage;
+        return filteredUsers.slice(startIndex, endIndex);
+    };
+
+    const getUserTotalPages = () => {
+        const filteredUsers = getFilteredUsers();
+        return Math.ceil(filteredUsers.length / usersPerPage);
+    };
+
+    const handleUserSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setUserSearchQuery(e.target.value);
+        setUserPage(0); // Reset to first page when searching
+    };
+
+    const handleUserPagePrevious = () => {
+        if (userPage > 0) {
+            setUserPage(userPage - 1);
+        }
+    };
+
+    const handleUserPageNext = () => {
+        if (userPage < getUserTotalPages() - 1) {
+            setUserPage(userPage + 1);
+        }
+    };
+
     const isFirstPage = page === 0;
     const isLastPage = page === totalPages - 1;
 
@@ -215,13 +260,22 @@ export default function Posts() {
         </div>
     ) : null;
 
-    const userText = user ? `${user.username}` : 'all users';
-    const usersList = users.map((userItem) => (
+    const userText = user ? `${user.username}` : '所有使用者';
+    const paginatedUsers = getPaginatedUsers();
+    const userTotalPages = getUserTotalPages();
+    const isUserFirstPage = userPage === 0;
+    const isUserLastPage = userPage === userTotalPages - 1;
+    
+    const usersList = paginatedUsers.map((userItem) => (
         <div key={userItem.id} className="user-in-dropdown" onClick={() => changeUser(userItem)}>
             {userItem.username}
         </div>
     ));
-    usersList.splice(0, 0, <div key="all" className="user-in-dropdown" onClick={() => changeUser(null)}>{'all users'}</div>);
+    
+    // Only show "all users" option on first page when no search query
+    if (isUserFirstPage && !userSearchQuery) {
+        usersList.splice(0, 0, <div key="all" className="user-in-dropdown" onClick={() => changeUser(null)}>{'所有使用者'}</div>);
+    }
 
     const userSelect = (
         <div>
@@ -231,7 +285,36 @@ export default function Posts() {
                     <div className="shade" onClick={() => setShowUserDropdown(false)} />
                     <div className="users-dropdown-wrapper">
                         <div className="users-dropdown">
-                            {usersList}
+                            <div className="user-search-container">
+                                <input
+                                    type="text"
+                                    className="user-search-input"
+                                    placeholder="搜尋使用者..."
+                                    value={userSearchQuery}
+                                    onChange={handleUserSearchChange}
+                                    onClick={(e) => e.stopPropagation()}
+                                />
+                            </div>
+                            <div className="users-list-container">
+                                {usersList}
+                            </div>
+                            {userTotalPages > 1 && (
+                                <div className="user-pagination">
+                                    <span 
+                                        className={isUserFirstPage ? 'inactive' : 'active'} 
+                                        onClick={isUserFirstPage ? undefined : handleUserPagePrevious}
+                                    >
+                                        {'<'}
+                                    </span>
+                                    <span>{userPage + 1} / {userTotalPages}</span>
+                                    <span 
+                                        className={isUserLastPage ? 'inactive' : 'active'} 
+                                        onClick={isUserLastPage ? undefined : handleUserPageNext}
+                                    >
+                                        {'>'}
+                                    </span>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -289,9 +372,9 @@ export default function Posts() {
                                 </div>
                             </div>
                             <div className="date-selector">
-                                <label htmlFor="startDate">From:</label>
+                                <label htmlFor="startDate">開始日期:</label>
                                 <input name="startDate" type="date" value={startDate} onChange={setStartDateHandler} />
-                                <label htmlFor="endDate">To:</label>
+                                <label htmlFor="endDate">結束日期:</label>
                                 <input name="endDate" type="date" value={endDate} onChange={setEndDateHandler} />
                             </div>
                             {paginator}
