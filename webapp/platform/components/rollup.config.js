@@ -34,11 +34,15 @@ export default [
             }),
             resolve({
                 browser: true,
-                extensions: ['.ts', '.tsx'],
+                extensions: ['.ts', '.tsx', '.js', '.jsx'],
             }),
             commonjs(),
             typescript({
+                tsconfig: './tsconfig.json',
                 outputToFilesystem: true,
+                declaration: true,
+                declarationDir: 'dist',
+                exclude: ['**/*.test.ts', '**/*.test.tsx'],
             }),
         ],
         external: externals,
