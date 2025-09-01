@@ -95,3 +95,58 @@ See the [LICENSE file](LICENSE.txt) for license rights and limitations.
 
 Please see [CONTRIBUTING.md](./CONTRIBUTING.md).
 [Join the Mattermost Contributors server](https://community.mattermost.com/signup_user_complete/?id=codoy5s743rq5mk18i7u5ksz7e) to join community discussions about contributions, development, and more.
+
+## Production Deployment (生產環境部署)
+
+本專案包含自動化部署腳本，用於在生產環境中部署 Mattermost。
+
+### 首次部署
+
+```bash
+# 1. 更新代碼
+git pull origin main
+
+# 2. 設定系統服務（只需執行一次）
+chmod +x setup_service.sh
+./setup_service.sh
+
+# 3. 編譯並啟動服務
+chmod +x devops.sh
+./devops.sh
+```
+
+### 日常更新
+
+```bash
+# 1. 更新代碼
+git pull origin main
+
+# 2. 重新部署
+./devops.sh
+```
+
+### 服務管理
+
+```bash
+# 啟動服務
+sudo systemctl start mattermost
+
+# 停止服務
+sudo systemctl stop mattermost
+
+# 重啟服務
+sudo systemctl restart mattermost
+
+# 查看狀態
+sudo systemctl status mattermost
+
+# 即時日誌
+sudo journalctl -u mattermost -f
+```
+
+### 腳本說明
+
+- **`devops.sh`** - 生產部署腳本，自動編譯前後端並重啟服務
+- **`setup_service.sh`** - 系統服務設定腳本，建立 systemd 服務（只需執行一次）
+
+服務會在系統重開機後自動啟動。
