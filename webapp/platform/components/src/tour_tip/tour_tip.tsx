@@ -5,11 +5,11 @@ import Tippy from '@tippyjs/react';
 import classNames from 'classnames';
 import React, {useRef} from 'react';
 import {FormattedMessage} from 'react-intl';
-import type {Placement} from 'tippy.js';
+import {type Placement} from 'tippy.js';
 
 import {TourTipBackdrop} from './tour_tip_backdrop';
 
-import type {Props as PunchOutCoordsHeightAndWidth} from '../common/hooks/useMeasurePunchouts';
+import {type Props as PunchOutCoordsHeightAndWidth} from '../common/hooks/useMeasurePunchouts';
 import {PulsatingDot} from '../pulsating_dot';
 
 import 'tippy.js/dist/tippy.css';
