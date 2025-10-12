@@ -55,7 +55,7 @@ export default function Posts() {
     const [showUserDropdown, setShowUserDropdown] = useState(false);
     const [userSearchQuery, setUserSearchQuery] = useState('');
     const [userPage, setUserPage] = useState(0);
-    const [usersPerPage] = useState(10);
+    const [usersPerPage] = useState(50); // Increased from 10 to 50 users per page
 
     useEffect(() => {
         getUsers();
@@ -64,8 +64,11 @@ export default function Posts() {
 
     const getUsers = async () => {
         const options = {};
-        const profiles = await Client4.getProfiles(0, 10000, options);
+        // Fetch all users with a high limit to ensure we get everyone
+        const profiles = await Client4.getProfiles(0, 100000, options);
         const filteredUsers = profiles.filter((user: User) => !user.is_bot);
+        // Sort users alphabetically by username
+        filteredUsers.sort((a, b) => a.username.localeCompare(b.username));
         setUsers(filteredUsers);
         dispatch({
             type: UserTypes.RECEIVED_PROFILES_LIST,
