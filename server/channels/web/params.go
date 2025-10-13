@@ -17,7 +17,7 @@ import (
 const (
 	PageDefault        = 0
 	PerPageDefault     = 60
-	PerPageMaximum     = 200
+	PerPageMaximum     = 100000  // 增加限制以支援大量用戶查詢
 	LogsPerPageDefault = 10000
 	LogsPerPageMaximum = 10000
 	LimitDefault       = 60
