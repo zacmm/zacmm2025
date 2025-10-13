@@ -4210,6 +4210,7 @@
   "login.session_expired": "工作階段已逾期，請重新登入。",
   "login.session_expired.notification": "工作階段過期：請登入以繼續接收通知。",
   "login.session_expired.title": "* {siteName}：工作階段逾期",
+  "login.ip_whitelist_denied": "您的 IP 位址未被授權訪問此系統，請聯繫系統管理員。",
   "login.subtitle": "與您的團隊即時協作",
   "login.terms_rejected": "在使用 {siteName} 前必須同意服務條款。詳情請聯絡系統管理員。",
   "login.title": "登入您的帳號",

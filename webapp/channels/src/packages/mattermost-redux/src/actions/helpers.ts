@@ -19,7 +19,8 @@ export function forceLogoutIfNecessary(err: ServerError, dispatch: DispatchFunc<
 
     if ('status_code' in err && err.status_code === HTTP_UNAUTHORIZED && err.url && err.url.indexOf('/login') === -1 && currentUserId) {
         Client4.setToken('');
-        dispatch({type: UserTypes.LOGOUT_SUCCESS, data: {}});
+        // Pass the server_error_id so we can distinguish between different types of 401 errors
+        dispatch({type: UserTypes.LOGOUT_SUCCESS, data: {server_error_id: err.server_error_id}});
     }
 }
 

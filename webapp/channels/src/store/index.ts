@@ -99,6 +99,16 @@ export default function configureStore(preloadedState?: DeepPartial<GlobalState>
         });
 
         let purging = false;
+        let lastLogoutAction: any = null;
+
+        // Intercept LOGOUT_SUCCESS actions to capture the server_error_id
+        const originalDispatch = store.dispatch;
+        store.dispatch = function(action: any) {
+            if (action.type === 'LOGOUT_SUCCESS') {
+                lastLogoutAction = action;
+            }
+            return originalDispatch(action);
+        } as typeof originalDispatch;
 
         // Clean up after a logout
         store.subscribe(() => {
@@ -112,12 +122,20 @@ export default function configureStore(preloadedState?: DeepPartial<GlobalState>
                     cleanLocalStorage();
                     clearUserCookie();
 
-                    // Preserve any query string parameters on logout, including parameters
-                    // used by the application such as extra and redirect_to.
-                    window.location.href = `${basePath}${window.location.search}`;
+                    // Check if this is an IP whitelist error and set appropriate extra parameter
+                    let redirectUrl = `${basePath}${window.location.search}`;
+                    if (lastLogoutAction?.data?.server_error_id === 'api.context.ip_whitelist_denied.app_error') {
+                        // Remove any existing extra parameter and add ip_whitelist_denied
+                        const url = new URL(window.location.href);
+                        url.searchParams.set('extra', 'ip_whitelist_denied');
+                        redirectUrl = `${basePath}${url.search}`;
+                    }
+
+                    window.location.href = redirectUrl;
 
                     setTimeout(() => {
                         purging = false;
+                        lastLogoutAction = null;
                     }, 500);
                 });
             }

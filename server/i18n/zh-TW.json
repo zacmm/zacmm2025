@@ -954,6 +954,10 @@
     "translation": "無效或逾期的工作階段，請重新登入。"
   },
   {
+    "id": "api.context.ip_whitelist_denied.app_error",
+    "translation": "您的 IP 位址未被授權訪問此系統，請聯繫系統管理員。"
+  },
+  {
     "id": "api.context.token_provided.app_error",
     "translation": "工作階段並非使用 OAuth 協定，查詢字串中卻出現了代符。"
   },
