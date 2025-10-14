@@ -4207,7 +4207,7 @@
   "login.passwordChanged": " 已成功更新密碼",
   "login.placeholderOr": " 或 ",
   "login.saml": "SAML",
-  "login.session_expired": "工作階段已逾期，請重新登入。",
+  "login.session_expired": "工作階段已逾期或 IP 不在白名單內，請重新登入。",
   "login.session_expired.notification": "工作階段過期：請登入以繼續接收通知。",
   "login.session_expired.title": "* {siteName}：工作階段逾期",
   "login.ip_whitelist_denied": "您的 IP 位址未被授權訪問此系統，請聯繫系統管理員。",

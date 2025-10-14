@@ -122,14 +122,10 @@ export default function configureStore(preloadedState?: DeepPartial<GlobalState>
                     cleanLocalStorage();
                     clearUserCookie();
 
-                    // Check if this is an IP whitelist error and set appropriate extra parameter
-                    let redirectUrl = `${basePath}${window.location.search}`;
-                    if (lastLogoutAction?.data?.server_error_id === 'api.context.ip_whitelist_denied.app_error') {
-                        // Remove any existing extra parameter and add ip_whitelist_denied
-                        const url = new URL(window.location.href);
-                        url.searchParams.set('extra', 'ip_whitelist_denied');
-                        redirectUrl = `${basePath}${url.search}`;
-                    }
+                    // Always add extra=expired parameter when redirecting after logout
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('extra', 'expired');
+                    const redirectUrl = `${basePath}${url.search}`;
 
                     window.location.href = redirectUrl;
 

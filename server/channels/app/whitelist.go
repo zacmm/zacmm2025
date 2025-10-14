@@ -7,7 +7,6 @@ import (
 	"net"
 	"net/http"
 	"strings"
-	"fmt"
 
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/shared/mlog"
@@ -66,11 +65,10 @@ func (a *App) GetUserWhitelistIPs(userId string) ([]string, *model.AppError) {
 
 // CheckUserIPWhitelisted checks if a user's IP is whitelisted
 func (a *App) CheckUserIPWhitelisted(c request.CTX, userId string, ipAddresses []string) (bool, *model.AppError) {
-	// Get user to check if they're a system admin (admins bypass whitelist)
-	fmt.Println("\n\n\nChecking whitelisted 111", userId, ipAddresses)
 	if userId == "" {
 		return true, nil
 	}
+
 	user, err := a.GetUser(userId)
 	if err != nil {
 		return false, err
@@ -87,7 +85,7 @@ func (a *App) CheckUserIPWhitelisted(c request.CTX, userId string, ipAddresses [
 		return false, appErr
 	}
 
-	// If no IPs are whitelisted, deny access
+	// If no IPs are whitelisted, deny access (user needs to set up whitelist to use the system)
 	if len(whitelistedIPs) == 0 {
 		return false, nil
 	}
@@ -102,6 +100,7 @@ func (a *App) CheckUserIPWhitelisted(c request.CTX, userId string, ipAddresses [
 		}
 	}
 
+	// IP not in whitelist - deny access
 	return false, nil
 }
 
