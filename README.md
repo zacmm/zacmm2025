@@ -117,11 +117,23 @@ chmod +x devops.sh
 
 ### 🔄 日常更新部署
 
+**注意**：前端需要在本地編譯後推送到遠端，因為遠端伺服器沒有安裝 Node.js/npm。
+
 ```bash
-# 1. 更新代碼
+# === 在本地執行 ===
+# 1. 編譯前端（生產版本）
+cd webapp && npm run build && cd ..
+
+# 2. 提交並推送代碼
+git add .
+git commit -m "update: 更新前端編譯產物"
+git push origin main
+
+# === 在遠端伺服器執行 ===
+# 3. 更新代碼
 git pull origin main
 
-# 2. 重新編譯並部署（自動停止舊服務、編譯、啟動新服務）
+# 4. 重新編譯並部署（會編譯後端並重啟服務）
 ./devops.sh
 ```
 

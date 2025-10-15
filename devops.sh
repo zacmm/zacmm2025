@@ -10,11 +10,33 @@ if [ ! -d "webapp" ] || [ ! -d "server" ] || [ ! -f "README.md" ]; then
 fi
 
 echo "1️⃣ 停止服務"
-sudo systemctl stop mattermost 2>/dev/null || sudo pkill -f mattermost || echo "無運行中的服務"
+sudo systemctl stop mattermost 2>/dev/null || echo "systemctl 停止失敗或未使用"
 sleep 2
+# 強制終止所有殘留的 mattermost 進程
+sudo pkill -9 -f "bin/mattermost" 2>/dev/null || echo "無殘留進程"
+sleep 2
+# 確認進程已完全停止
+if ps aux | grep -v grep | grep mattermost > /dev/null; then
+    echo "⚠️  警告：仍有 mattermost 進程運行，強制終止中..."
+    sudo killall -9 mattermost 2>/dev/null
+    sleep 2
+fi
+echo "✅ 服務已停止"
+
+echo "2️⃣ 檢查翻譯檔案"
+if grep -q "工作階段已逾期或" webapp/channels/src/i18n/zh-TW.json 2>/dev/null; then
+    echo "✅ 翻譯檔案已包含最新更新"
+else
+    echo "⚠️  警告：翻譯檔案可能未更新"
+fi
 
 echo "2️⃣ 編譯前端"
-cd server && make build && cd .. || { echo "❌ 前端編譯失敗"; exit 1; }
+if command -v npm &> /dev/null; then
+    echo "✅ 檢測到 npm，開始編譯前端..."
+    cd webapp && make build && cd .. || { echo "❌ 前端編譯失敗"; exit 1; }
+else
+    echo "⚠️  未檢測到 npm，跳過前端編譯（請確保 dist 資料夾已在 Git 中更新）"
+fi
 
 echo "3️⃣ 編譯後端"
 cd server && make build-linux && cd .. || { echo "❌ 後端編譯失敗"; exit 1; }

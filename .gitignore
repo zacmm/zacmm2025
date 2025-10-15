@@ -4,7 +4,8 @@ logs
 node_modules
 /data
 /dist
-/webapp/dist
+# /webapp/dist  # 註解掉，讓前端編譯產物可以被追蹤
+# 注意：由於遠端伺服器沒有 Node.js，需要將編譯好的前端推送到 Git
 jobserver
 npm-debug.log
 webapp/yarn-error.log
