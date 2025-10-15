@@ -33,7 +33,7 @@ fi
 echo "2️⃣ 編譯前端"
 if command -v npm &> /dev/null; then
     echo "✅ 檢測到 npm，開始編譯前端..."
-    cd webapp && make build && cd .. || { echo "❌ 前端編譯失敗"; exit 1; }
+    cd webapp && npm run build && cd .. || { echo "❌ 前端編譯失敗"; exit 1; }
 else
     echo "⚠️  未檢測到 npm，跳過前端編譯（請確保 dist 資料夾已在 Git 中更新）"
 fi
