@@ -3,11 +3,39 @@
 
 // 1. 自己的訊息在右邊 (Own messages aligned to the right) - 使用 flex 布局
 .post {
+    // 別人的訊息：讓 content 寬度適應內容，這樣 post-menu 才會靠近訊息內容
+    &:not(.current--user) {
+        overflow: visible; // 確保上方的選單不被裁切
+
+        .post__content {
+            margin: 0; // 移除 margin: 0 auto，讓訊息靠左
+        }
+
+        // 讓 header 成為定位參考點
+        .post__header {
+            position: relative;
+        }
+
+        // 操作選單放到人名上方
+        .post-menu {
+            top: -40px;
+            left: 0;
+            right: auto;
+            max-width: calc(100vw - 100px); // 確保不超出螢幕寬度
+        }
+
+        // 確保訊息內容寬度正常
+        .post__body {
+            width: 100%;
+        }
+    }
+
     &.current--user {
         // 整體容器右對齊
         margin-left: auto;
         width: 100%;
-        
+        overflow: visible; // 確保上方的選單不被裁切
+
         // 主要內容區域使用 flex 重新排列
         .post__content {
             display: flex;
@@ -42,6 +70,7 @@
                     justify-content: flex-end;
                     width: 100%;
                     margin-bottom: 4px;
+                    position: relative; // 讓 header 成為定位參考點
                     
                     // 時間在前面
                     .post__time {
@@ -57,7 +86,15 @@
                         margin-right: 0;
                     }
                 }
-                
+
+                // 操作選單放到人名上方
+                .post-menu {
+                    top: -40px;
+                    right: 0; // 保持右對齊
+                    left: auto;
+                    max-width: calc(100vw - 100px); // 確保不超出螢幕寬度
+                }
+
                 // 下方：訊息內容右對齊
                 .post__body {
                     text-align: left;
@@ -80,6 +117,8 @@
     table-layout: fixed;
     border-radius: 10px 10px 10px 0;
     background-color: rgba(var(--center-channel-color-rgb), 0.04);
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 // 自己的訊息特殊樣式
