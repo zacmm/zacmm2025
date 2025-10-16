@@ -6,13 +6,17 @@ import React from 'react';
 
 type Props = {
     unreadMentions: number;
+    unreadMsgs?: number;
     hasUrgent?: boolean;
     icon?: React.ReactNode;
     className?: string;
 };
 
-export default function ChannelMentionBadge({unreadMentions, hasUrgent, icon, className}: Props) {
-    if (unreadMentions > 0) {
+export default function ChannelMentionBadge({unreadMentions, unreadMsgs, hasUrgent, icon, className}: Props) {
+    // 優先顯示提及數（mentions），如果沒有提及則顯示未讀訊息數
+    const displayCount = unreadMentions > 0 ? unreadMentions : (unreadMsgs || 0);
+
+    if (displayCount > 0) {
         return (
             <span
                 id='unreadMentions'
@@ -20,7 +24,7 @@ export default function ChannelMentionBadge({unreadMentions, hasUrgent, icon, cl
             >
                 {icon}
                 <span className='unreadMentions'>
-                    {unreadMentions}
+                    {displayCount}
                 </span>
             </span>
         );
