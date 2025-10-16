@@ -76,7 +76,23 @@ func (a *App) CheckUserIPWhitelisted(c request.CTX, userId string, ipAddresses [
 
 	// System admins bypass IP whitelist
 	if a.RolesGrantPermission(user.GetRoles(), model.PermissionManageSystem.Id) {
+		c.Logger().Debug("System admin bypassing IP whitelist", mlog.String("user_id", userId))
 		return true, nil
+	}
+
+	// Team admins bypass IP whitelist
+	teamMembers, teamErr := a.GetTeamMembersForUser(c, userId, "", false)
+	if teamErr != nil {
+		c.Logger().Warn("Failed to get team members for IP whitelist check", mlog.String("user_id", userId), mlog.Err(teamErr))
+		// Continue with normal whitelist check even if we can't get team members
+	} else {
+		// Check if user is admin of any team
+		for _, teamMember := range teamMembers {
+			if teamMember.SchemeAdmin {
+				c.Logger().Debug("Team admin bypassing IP whitelist", mlog.String("user_id", userId), mlog.String("team_id", teamMember.TeamId))
+				return true, nil
+			}
+		}
 	}
 
 	// Get user's whitelisted IPs
