@@ -103,9 +103,16 @@ const ReactionTooltip: React.FC<Props> = (props: Props) => {
 
     let tooltipTitle;
     if (usersWithDates && usersWithDates.length > 0) {
-        // Display user names with dates
-        const userList = usersWithDates.map((item) => `${item.username} (${item.date})`).join('\n');
-        tooltipTitle = userList;
+        // Display user names with dates, each user on a separate line
+        tooltipTitle = (
+            <div style={{display: 'flex', flexDirection: 'column', gap: '4px'}}>
+                {usersWithDates.map((item, index) => (
+                    <div key={index}>
+                        {item.username} ({item.date})
+                    </div>
+                ))}
+            </div>
+        );
     } else {
         tooltipTitle = intl.formatMessage(
             {
