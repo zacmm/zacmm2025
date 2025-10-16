@@ -23,7 +23,7 @@
     &__reaction {
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        gap: 8px;
     }
 
     &__user-row {
@@ -59,7 +59,6 @@
     &__emoji-row {
         display: flex;
         align-items: center;
-        margin-left: 4px;
     }
 
     &__emoji-icon {

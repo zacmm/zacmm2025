@@ -35,7 +35,6 @@ import PostMessageContainer from 'components/post_view/post_message_view';
 import PostPreHeader from 'components/post_view/post_pre_header';
 import PostTime from 'components/post_view/post_time';
 import ReactionList from 'components/post_view/reaction_list';
-import ReactionDetails from 'components/post_view/reaction_details';
 import ThreadFooter from 'components/threading/channel_threads/thread_footer';
 import type {Props as TimestampProps} from 'components/timestamp/timestamp';
 import ArchiveIcon from 'components/widgets/icons/archive_icon';
@@ -664,7 +663,6 @@ function PostComponent(props: Props) {
                                         postId={post.id}
                                     />
                                 )}
-                                {showReactions && <ReactionDetails reactions={props.reactions}/>}
                                 {showReactions && <ReactionList post={post}/>}
                             </div>
                             {threadFooter}

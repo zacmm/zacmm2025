@@ -11,6 +11,7 @@ import {getEmojiName} from 'mattermost-redux/utils/emoji_utils';
 
 import {localizeMessage} from 'utils/utils';
 
+import Reaction from '../reaction';
 import AddReactionButton from './add_reaction_button';
 
 type Props = {
@@ -105,12 +106,23 @@ export default class ReactionList extends React.PureComponent<Props, State> {
             );
         }
 
-        // Only render the add reaction button, not the individual reaction buttons
+        const reactions = this.state.emojiNames.map((emojiName) => {
+            return (
+                <Reaction
+                    key={emojiName}
+                    post={this.props.post}
+                    emojiName={emojiName}
+                    reactions={reactionsByName.get(emojiName) || []}
+                />
+            );
+        });
+
         return (
             <div
                 aria-label={localizeMessage({id: 'reaction.container.ariaLabel', defaultMessage: 'reactions'})}
                 className='post-reaction-list'
             >
+                {reactions}
                 {addReaction}
             </div>
         );

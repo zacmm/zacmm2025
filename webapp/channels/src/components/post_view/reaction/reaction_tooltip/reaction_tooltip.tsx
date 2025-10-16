@@ -17,6 +17,7 @@ type Props = {
     onShow: () => void;
     reactions: ReactionType[];
     users: string[];
+    usersWithDates?: Array<{username: string; date: string}>;
 };
 
 const ReactionTooltip: React.FC<Props> = (props: Props) => {
@@ -29,6 +30,7 @@ const ReactionTooltip: React.FC<Props> = (props: Props) => {
         onShow,
         reactions,
         users,
+        usersWithDates,
     } = props;
 
     const intl = useIntl();
@@ -99,17 +101,24 @@ const ReactionTooltip: React.FC<Props> = (props: Props) => {
         });
     }
 
-    const tooltipTitle = intl.formatMessage(
-        {
-            id: 'reaction.reacted',
-            defaultMessage: '{users} {reactionVerb} with {emoji}',
-        },
-        {
-            users: names,
-            reactionVerb,
-            emoji: ':' + emojiName + ':',
-        },
-    );
+    let tooltipTitle;
+    if (usersWithDates && usersWithDates.length > 0) {
+        // Display user names with dates
+        const userList = usersWithDates.map((item) => `${item.username} (${item.date})`).join('\n');
+        tooltipTitle = userList;
+    } else {
+        tooltipTitle = intl.formatMessage(
+            {
+                id: 'reaction.reacted',
+                defaultMessage: '{users} {reactionVerb} with {emoji}',
+            },
+            {
+                users: names,
+                reactionVerb,
+                emoji: ':' + emojiName + ':',
+            },
+        );
+    }
 
     let tooltipHint;
     if (currentUserReacted && canRemoveReactions) {

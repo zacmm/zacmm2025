@@ -51,12 +51,46 @@ export const makeGetNamesOfUsers = () => createSelector(
     },
 );
 
+export const makeGetUsersWithDates = () => createSelector(
+    'makeGetUsersWithDates',
+    (state: GlobalState, reactions: ReactionType[]) => reactions,
+    getCurrentUserId,
+    makeGetProfilesForReactions(),
+    getTeammateNameDisplaySetting,
+    (reactions: ReactionType[], currentUserId: string, profiles: UserProfile[], teammateNameDisplay: string) => {
+        const sortedReactions = reactions.sort((a, b) => a.create_at - b.create_at);
+        const usersWithDates = sortedReactions.map((reaction) => {
+            let username;
+            if (reaction.user_id === currentUserId) {
+                username = Utils.localizeMessage({id: 'reaction.you', defaultMessage: 'You'});
+            } else {
+                const user = profiles.find((u) => u.id === reaction.user_id);
+                username = user ? displayUsername(user, teammateNameDisplay) : 'Unknown User';
+            }
+
+            const date = new Date(reaction.create_at);
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            const formattedDate = `${year}/${month}/${day} ${hours}:${minutes}`;
+
+            return {username, date: formattedDate};
+        });
+
+        return usersWithDates;
+    },
+);
+
 function makeMapStateToProps() {
     const getNamesOfUsers = makeGetNamesOfUsers();
+    const getUsersWithDates = makeGetUsersWithDates();
 
     return (state: GlobalState, ownProps: OwnProps) => {
         return {
             users: getNamesOfUsers(state, ownProps.reactions),
+            usersWithDates: getUsersWithDates(state, ownProps.reactions),
         };
     };
 }
