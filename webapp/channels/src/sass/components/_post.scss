@@ -1994,23 +1994,6 @@
 
 .post-message__text {
     text-align: left;
-    
-    // Make emojis 3x larger in chat messages (21px -> 63px)
-    .emoticon {
-        width: 63px;
-        min-width: 63px;
-        height: 63px;
-        min-height: 63px;
-        
-        &--unicode {
-            font-size: 63px;
-            line-height: 1.1;
-
-            .os--windows & {
-                font-size: 58px;
-            }
-        }
-    }
 }
 
 .view-history__text {
