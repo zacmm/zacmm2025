@@ -190,9 +190,11 @@ func ParamsFromRequest(r *http.Request) *Params {
 	params.FieldId = props["field_id"]
 	params.Scope = query.Get("scope")
 
-	if val, err := strconv.Atoi(query.Get("page")); err != nil || (val < 0 && params.UserId == "" && !getChannelMembersForUserRegex.MatchString(r.URL.Path)) {
-		// We don't want to apply this logic for the getChannelMembersForUser API handler
-		// because that API allows page=-1 to switch to streaming mode.
+	if val, err := strconv.Atoi(query.Get("page")); err != nil {
+		params.Page = PageDefault
+	} else if val < 0 && !getChannelMembersForUserRegex.MatchString(r.URL.Path) {
+		// Don't allow negative page numbers except for the getChannelMembersForUser API handler
+		// which allows page=-1 to switch to streaming mode.
 		params.Page = PageDefault
 	} else {
 		params.Page = val
