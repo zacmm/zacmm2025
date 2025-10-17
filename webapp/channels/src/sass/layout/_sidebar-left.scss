@@ -1128,6 +1128,14 @@ $sidebarOpacityAnimationDuration: 0.15s;
             }
         }
 
+        &.muted-unread {
+            .SidebarChannelLinkLabel {
+                color: #ff0000 !important;
+                font-weight: 600;
+                opacity: 1 !important;
+            }
+        }
+
         .SidebarMenu:not(.menuOpen) {
             display: none;
         }

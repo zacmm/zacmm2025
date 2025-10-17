@@ -284,6 +284,7 @@ export class SidebarChannelLink extends React.PureComponent<Props, State> {
             {
                 menuOpen: this.state.isMenuOpen,
                 muted: isMuted,
+                'muted-unread': isMuted && (isUnread || unreadMentions > 0 || unreadMsgs > 0),
                 'unread-title': this.props.isUnread,
                 selected: isChannelSelected,
             },
