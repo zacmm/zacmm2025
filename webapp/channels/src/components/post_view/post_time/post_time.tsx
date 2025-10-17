@@ -19,6 +19,25 @@ const POST_TOOLTIP_RANGES = [
 ];
 const getTimeFormat: ComponentProps<typeof Timestamp>['useTime'] = (_, {hour, minute, second}) => ({hour, minute, second});
 
+// 自訂時間格式化函數：Mon Sep 08 2025 下午2:43
+function formatCustomTime(timestamp: number): string {
+    const date = new Date(timestamp);
+    const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    const weekday = weekdays[date.getDay()];
+    const month = months[date.getMonth()];
+    const day = String(date.getDate()).padStart(2, '0');
+    const year = date.getFullYear();
+    const hours = date.getHours();
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+
+    const period = hours >= 12 ? '下午' : '上午';
+    const hour12 = hours % 12 || 12;
+
+    return `${weekday} ${month} ${day} ${year} ${period}${hour12}:${minutes}`;
+}
+
 type Props = {
 
     /*
@@ -65,12 +84,9 @@ export default class PostTime extends React.PureComponent<Props> {
         } = this.props;
 
         const postTime = (
-            <Timestamp
-                value={eventTime}
-                className='post__time'
-                useDate={false}
-                {...timestampProps}
-            />
+            <span className='post__time'>
+                {formatCustomTime(eventTime)}
+            </span>
         );
 
         const content = isMobile() || !isPermalink ? (
