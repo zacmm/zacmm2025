@@ -655,16 +655,18 @@ function PostComponent(props: Props) {
                                     handleFileDropdownOpened={handleFileDropdownOpened}
                                 />
                             }
-                            <div className='post__body-reactions-acks'>
-                                {props.isPostAcknowledgementsEnabled && post.metadata?.priority?.requested_ack && (
-                                    <PostAcknowledgements
-                                        authorId={post.user_id}
-                                        isDeleted={post.state === Posts.POST_DELETED}
-                                        postId={post.id}
-                                    />
-                                )}
-                                {showReactions && <ReactionList post={post}/>}
-                            </div>
+                            {((props.isPostAcknowledgementsEnabled && post.metadata?.priority?.requested_ack) || (showReactions && props.reactions && Object.keys(props.reactions).length > 0)) && (
+                                <div className='post__body-reactions-acks'>
+                                    {props.isPostAcknowledgementsEnabled && post.metadata?.priority?.requested_ack && (
+                                        <PostAcknowledgements
+                                            authorId={post.user_id}
+                                            isDeleted={post.state === Posts.POST_DELETED}
+                                            postId={post.id}
+                                        />
+                                    )}
+                                    {showReactions && <ReactionList post={post}/>}
+                                </div>
+                            )}
                             {threadFooter}
                         </div>
                     </div>
