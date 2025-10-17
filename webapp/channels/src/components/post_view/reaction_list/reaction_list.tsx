@@ -59,15 +59,28 @@ export default class ReactionList extends React.PureComponent<Props, State> {
     }
 
     static getDerivedStateFromProps(props: Props, state: State): Partial<State> | null {
-        let emojiNames = state.emojiNames;
+        // 只保留實際存在的 emoji reactions
+        const currentEmojiNames = new Set<string>();
 
         for (const {emoji_name: emojiName} of Object.values(props.reactions ?? {})) {
-            if (!emojiNames.includes(emojiName)) {
-                emojiNames = [...emojiNames, emojiName];
+            currentEmojiNames.add(emojiName);
+        }
+
+        // 將 Set 轉換為陣列，保持原有順序但只包含當前存在的 emoji
+        const newEmojiNames = state.emojiNames.filter((name) => currentEmojiNames.has(name));
+
+        // 添加新出現的 emoji（保持它們出現的順序）
+        for (const emojiName of currentEmojiNames) {
+            if (!newEmojiNames.includes(emojiName)) {
+                newEmojiNames.push(emojiName);
             }
         }
 
-        return (emojiNames === state.emojiNames) ? null : {emojiNames};
+        // 比較陣列內容是否相同
+        const isEqual = newEmojiNames.length === state.emojiNames.length &&
+                       newEmojiNames.every((name, index) => name === state.emojiNames[index]);
+
+        return isEqual ? null : {emojiNames: newEmojiNames};
     }
 
     handleEmojiClick = (emoji: Emoji): void => {
