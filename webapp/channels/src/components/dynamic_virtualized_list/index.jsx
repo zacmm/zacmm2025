@@ -481,6 +481,12 @@ export class DynamicVirtualizedList extends PureComponent {
         }
 
         const element = this._outerRef;
+
+        // 防止快速切換頻道時訪問已卸載的 DOM 元素
+        if (!element) {
+            return;
+        }
+
         const wasAtBottom =
             this.props.height + element.scrollTop >=
             this._listMetaData.totalMeasuredSize - atBottomMargin;

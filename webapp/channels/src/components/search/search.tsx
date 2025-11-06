@@ -139,7 +139,8 @@ const Search = ({
 
     const isDesktop = isDesktopApp() && isServerVersionGreaterThanOrEqualTo(getDesktopVersion(), '4.7.0');
     useEffect(() => {
-        if (!enableFindShortcut) {
+        // 修復：只有明確設為 false 時才禁用，undefined 或 true 都啟用
+        if (enableFindShortcut === false) {
             return undefined;
         }
 
