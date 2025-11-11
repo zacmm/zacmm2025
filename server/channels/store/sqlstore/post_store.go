@@ -2213,7 +2213,7 @@ func (s *SqlPostStore) search(teamId string, userId string, params *model.Search
 			// 使用 LIKE 查詢來處理包含特殊字符的搜尋
 			// 這樣可以搜尋到像 "1,234" 或 "$1,234" 這樣的內容
 			likePattern := "%" + params.Terms + "%"
-			searchClause := fmt.Sprintf("%s LIKE ?", searchType)
+			searchClause := fmt.Sprintf("q2.%s LIKE ?", searchType)
 			baseQuery = baseQuery.Where(searchClause, likePattern)
 		} else {
 			// 使用原本的 FULLTEXT 搜尋（快速）
