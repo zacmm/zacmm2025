@@ -2206,40 +2206,52 @@ func (s *SqlPostStore) search(teamId string, userId string, params *model.Search
 		searchClause := fmt.Sprintf("to_tsvector('%[1]s', %[2]s) @@  to_tsquery('%[1]s', ?)", textSearchCfg, searchType)
 		baseQuery = baseQuery.Where(searchClause, tsQueryClause)
 	} else if s.DriverName() == model.DatabaseDriverMysql {
-		if searchType == "Message" {
-			terms, err = removeMysqlStopWordsFromTerms(terms)
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to remove Mysql stop-words from terms")
-			}
+		// 檢測是否包含特殊字符（逗號、$、#等），如果有則使用 LIKE 查詢
+		hasSpecialChars := strings.ContainsAny(params.Terms, ",$#@")
 
-			if terms == "" {
-				return list, nil
-			}
-		}
-
-		excludeClause := ""
-		if excludedTerms != "" {
-			excludeClause = " -(" + excludedTerms + ")"
-		}
-
-		var termsClause string
-		if params.OrTerms {
-			termsClause = terms + excludeClause
+		if hasSpecialChars && searchType == "Message" {
+			// 使用 LIKE 查詢來處理包含特殊字符的搜尋
+			// 這樣可以搜尋到像 "1,234" 或 "$1,234" 這樣的內容
+			likePattern := "%" + params.Terms + "%"
+			searchClause := fmt.Sprintf("%s LIKE ?", searchType)
+			baseQuery = baseQuery.Where(searchClause, likePattern)
 		} else {
-			splitTerms := []string{}
-			for _, t := range strings.Fields(terms) {
-				splitTerms = append(splitTerms, "+"+t)
+			// 使用原本的 FULLTEXT 搜尋（快速）
+			if searchType == "Message" {
+				terms, err = removeMysqlStopWordsFromTerms(terms)
+				if err != nil {
+					return nil, errors.Wrap(err, "failed to remove Mysql stop-words from terms")
+				}
+
+				if terms == "" {
+					return list, nil
+				}
 			}
-			termsClause = strings.Join(splitTerms, " ") + excludeClause
+
+			excludeClause := ""
+			if excludedTerms != "" {
+				excludeClause = " -(" + excludedTerms + ")"
+			}
+
+			var termsClause string
+			if params.OrTerms {
+				termsClause = terms + excludeClause
+			} else {
+				splitTerms := []string{}
+				for _, t := range strings.Fields(terms) {
+					splitTerms = append(splitTerms, "+"+t)
+				}
+				termsClause = strings.Join(splitTerms, " ") + excludeClause
+			}
+
+			searchClause := fmt.Sprintf("MATCH (%s) AGAINST (? IN BOOLEAN MODE)", searchType)
+
+			if params.IsHashtag {
+				termsClause = "\"" + termsClause + "\""
+			}
+
+			baseQuery = baseQuery.Where(searchClause, termsClause)
 		}
-
-		searchClause := fmt.Sprintf("MATCH (%s) AGAINST (? IN BOOLEAN MODE)", searchType)
-
-		if params.IsHashtag {
-			termsClause = "\"" + termsClause + "\""
-		}
-
-		baseQuery = baseQuery.Where(searchClause, termsClause)
 	}
 
 	inQuery := s.getSubQueryBuilder().Select("Id").
