@@ -28,7 +28,66 @@ else
 fi
 
 echo "3️⃣ 編譯後端（服務繼續運行中...）"
-cd server && make build-linux && cd .. || { echo "❌ 後端編譯失敗"; exit 1; }
+cd server || { echo "❌ 無法進入 server 目錄"; exit 1; }
+
+# 預先下載依賴，避免編譯時網路問題
+echo "📦 下載 Go 模組依賴..."
+timeout 300 go mod download || { echo "⚠️  依賴下載超時或失敗，繼續嘗試編譯..."; }
+
+# 使用自訂編譯命令，只編譯 mattermost binary（不編譯所有 packages）
+# 添加超時機制（10 分鐘）和詳細輸出
+echo "🔨 開始編譯 mattermost binary..."
+echo "⏱️  預計需要 3-5 分鐘，如果超過 10 分鐘將自動終止"
+
+# 設定編譯參數
+export GOOS=linux
+export GOARCH=amd64
+export GOMAXPROCS=2  # 限制並發數，避免記憶體不足
+
+# 獲取編譯時的 LDFLAGS
+BUILD_NUMBER=${BUILD_NUMBER:-dev}
+BUILD_DATE=$(date -u)
+BUILD_HASH=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
+LDFLAGS="-X 'github.com/mattermost/mattermost/server/public/model.BuildNumber=${BUILD_NUMBER}' \
+         -X 'github.com/mattermost/mattermost/server/public/model.BuildDate=${BUILD_DATE}' \
+         -X 'github.com/mattermost/mattermost/server/public/model.BuildHash=${BUILD_HASH}'"
+
+# 編譯 mattermost binary（只編譯 cmd/mattermost，不編譯全部）
+mkdir -p bin
+if timeout 600 go build -v \
+    -o bin/mattermost \
+    -trimpath \
+    -tags 'sourceavailable production' \
+    -ldflags "${LDFLAGS}" \
+    ./cmd/mattermost 2>&1 | tee /tmp/mattermost-build.log | tail -20; then
+    echo "✅ 後端編譯成功"
+else
+    EXITCODE=$?
+    echo "❌ 後端編譯失敗（退出碼: $EXITCODE）"
+    if [ $EXITCODE -eq 124 ]; then
+        echo "⚠️  編譯超時（超過 10 分鐘）"
+        echo "💡 建議："
+        echo "   1. 檢查網路連線是否穩定"
+        echo "   2. 檢查記憶體是否充足（建議至少 4GB）"
+        echo "   3. 清除編譯快取：cd server && go clean -cache"
+        echo "   4. 查看完整日誌：cat /tmp/mattermost-build.log"
+    fi
+    cd ..
+    exit 1
+fi
+
+# 也編譯 mmctl 工具
+echo "🔨 編譯 mmctl..."
+if timeout 120 go build -v \
+    -o bin/mmctl \
+    -trimpath \
+    ./cmd/mmctl 2>&1 | tail -5; then
+    echo "✅ mmctl 編譯成功"
+else
+    echo "⚠️  mmctl 編譯失敗（非致命錯誤，繼續）"
+fi
+
+cd ..
 echo "✅ 編譯完成！準備切換到新版本..."
 
 echo ""
