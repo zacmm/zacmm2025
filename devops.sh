@@ -22,7 +22,38 @@ echo ""
 echo "2️⃣ 編譯前端（服務繼續運行中...）"
 if command -v npm &> /dev/null; then
     echo "✅ 檢測到 npm，開始編譯前端..."
-    cd webapp && npm run build && cd .. || { echo "❌ 前端編譯失敗"; exit 1; }
+    echo "⚠️  前端編譯需要大量記憶體，限制使用 2GB 避免 OOM"
+
+    # 限制 Node.js 記憶體使用，避免 OOM 導致服務死掉
+    # --max-old-space-size=2048 限制 heap 為 2GB
+    export NODE_OPTIONS="--max-old-space-size=2048"
+
+    cd webapp || { echo "❌ 無法進入 webapp 目錄"; exit 1; }
+
+    # 使用 timeout 避免編譯卡住
+    if timeout 600 npm run build 2>&1 | tail -20; then
+        echo "✅ 前端編譯成功"
+    else
+        EXITCODE=$?
+        echo "❌ 前端編譯失敗（退出碼: $EXITCODE）"
+        if [ $EXITCODE -eq 124 ]; then
+            echo "⚠️  編譯超時（超過 10 分鐘）"
+            echo "💡 建議："
+            echo "   1. 檢查記憶體是否充足（建議至少 4GB）"
+            echo "   2. 嘗試手動編譯：cd webapp && npm run build"
+        elif [ $EXITCODE -eq 137 ]; then
+            echo "⚠️  進程被 kill，可能是記憶體不足（OOM）"
+            echo "💡 建議："
+            echo "   1. 增加伺服器記憶體或 swap"
+            echo "   2. 暫時停止 Mattermost 服務再編譯"
+            echo "   3. 在本地編譯好後直接上傳 dist 資料夾"
+        fi
+        cd ..
+        exit 1
+    fi
+
+    cd ..
+    unset NODE_OPTIONS
 else
     echo "⚠️  未檢測到 npm，跳過前端編譯（請確保 dist 資料夾已在 Git 中更新）"
 fi
