@@ -104,25 +104,29 @@ export default function Posts() {
             postsList.forEach((post: any) => {
                 const postInfo = PostInfoMap[post.id];
                 if (postInfo && !channels[post.channel_id]) {
+                    // Use default values if channel_name or team_name is undefined
+                    const channelName = postInfo.channel_name || 'unknown-channel';
+                    const teamName = postInfo.team_name || 'unknown-team';
+
                     // Create a mock channel object with the information we have
                     channels[post.channel_id] = {
                         id: post.channel_id,
-                        display_name: postInfo.channel_name,
-                        name: postInfo.channel_name.toLowerCase().replace(/\s+/g, '-'),
+                        display_name: channelName,
+                        name: channelName.toLowerCase().replace(/\s+/g, '-'),
                         type: postInfo.members ? 'D' : 'O', // Direct message if has members, otherwise open channel
                         team_id: `team_${post.channel_id}`, // Create a mock team_id
                         delete_at: 0,
                         create_at: 0,
                         update_at: 0,
                     };
-                    
+
                     // Create a mock team object
                     const teamId = `team_${post.channel_id}`;
                     if (!teams[teamId]) {
                         teams[teamId] = {
                             id: teamId,
-                            display_name: postInfo.team_name,
-                            name: postInfo.team_name.toLowerCase().replace(/\s+/g, '-'),
+                            display_name: teamName,
+                            name: teamName.toLowerCase().replace(/\s+/g, '-'),
                             type: 'O',
                             delete_at: 0,
                             create_at: 0,
