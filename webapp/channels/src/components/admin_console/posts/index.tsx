@@ -76,8 +76,8 @@ export default function Posts() {
         });
     };
 
-    const getPosts = () => {
-        const userId = user ? user.id : '';
+    const getPosts = (overrideUserId?: string) => {
+        const userId = overrideUserId !== undefined ? overrideUserId : (user ? user.id : '');
         const parsedStartDate = Date.parse(startDate);
         const parsedEndDate = Date.parse(endDate);
         
@@ -179,7 +179,7 @@ export default function Posts() {
     const changeUser = (selectedUser: User | null) => {
         setUser(selectedUser);
         setShowUserDropdown(false);
-        setTimeout(() => getPosts(), 0);
+        setTimeout(() => getPosts(selectedUser ? selectedUser.id : ''), 0);
     };
 
     const setPreviousPage = () => {
