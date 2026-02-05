@@ -58,8 +58,12 @@ export default function Posts() {
     const [usersPerPage] = useState(50); // Increased from 10 to 50 users per page
 
     useEffect(() => {
-        getUsers();
-        getPosts();
+        // Load users first, then posts to ensure user data is available in Redux store
+        const loadData = async () => {
+            await getUsers();
+            getPosts();
+        };
+        loadData();
     }, []);
 
     const getUsers = async () => {
@@ -105,8 +109,10 @@ export default function Posts() {
                 const postInfo = PostInfoMap[post.id];
                 if (postInfo && !channels[post.channel_id]) {
                     // Use default values if channel_name or team_name is undefined
-                    const channelName = postInfo.channel_name || 'unknown-channel';
-                    const teamName = postInfo.team_name || 'unknown-team';
+                    // For direct messages, use members as display name
+                    const isDM = Boolean(postInfo.members);
+                    const channelName = postInfo.channel_name || (isDM ? postInfo.members : 'unknown-channel');
+                    const teamName = postInfo.team_name || (isDM ? '私人訊息' : 'unknown-team');
 
                     // Create a mock channel object with the information we have
                     channels[post.channel_id] = {
