@@ -297,4 +297,43 @@
 
 .post--hovered {
     background: rgba(0,0,0,0) !important;
+}
+
+// Admin post wrapper - 顯示頻道和團隊資訊
+.admin-post-wrapper {
+    margin-bottom: 16px;
+    border: 1px solid var(--center-channel-color-16);
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: var(--center-channel-bg);
+
+    .admin-post-info {
+        display: flex;
+        align-items: center;
+        padding: 8px 16px;
+        background-color: var(--center-channel-color-04);
+        border-bottom: 1px solid var(--center-channel-color-08);
+        font-size: 13px;
+        color: var(--center-channel-color-72);
+    }
+
+    .admin-post-team {
+        font-weight: 600;
+        color: var(--link-color);
+    }
+
+    .admin-post-separator {
+        margin: 0 8px;
+        color: var(--center-channel-color-40);
+    }
+
+    .admin-post-channel {
+        color: var(--center-channel-color);
+    }
+
+    // 移除內部 Post 的邊框和間距
+    .post {
+        margin: 0;
+        border: none;
+    }
 } 

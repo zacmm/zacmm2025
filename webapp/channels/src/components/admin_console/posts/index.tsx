@@ -392,13 +392,26 @@ export default function Posts() {
                             </div>
                             {paginator}
                             <div>
-                                {posts.map(post => (
-                                    <Post 
-                                        key={post.id} 
-                                        post={post} 
-                                        location="center"
-                                    />
-                                ))}
+                                {posts.map(post => {
+                                    const info = postInfoMap ? postInfoMap[post.id] : null;
+                                    const isDM = info && Boolean(info.members);
+                                    const channelDisplay = info ? (info.channel_name || (isDM ? info.members : '未知頻道')) : '未知頻道';
+                                    const teamDisplay = info ? (info.team_name || (isDM ? '私人訊息' : '未知團隊')) : '未知團隊';
+
+                                    return (
+                                        <div key={post.id} className="admin-post-wrapper">
+                                            <div className="admin-post-info">
+                                                <span className="admin-post-team">{teamDisplay}</span>
+                                                <span className="admin-post-separator">/</span>
+                                                <span className="admin-post-channel">{channelDisplay}</span>
+                                            </div>
+                                            <Post
+                                                post={post}
+                                                location="center"
+                                            />
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     </SystemPermissionGate>
