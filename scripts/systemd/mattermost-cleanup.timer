@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily Mattermost data cleanup
+
+[Timer]
+OnCalendar=*-*-* 03:30:00 Asia/Taipei
+Persistent=true
+RandomizedDelaySec=300
+Unit=mattermost-cleanup.service
+
+[Install]
+WantedBy=timers.target
