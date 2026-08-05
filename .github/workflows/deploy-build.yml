@@ -72,7 +72,12 @@ jobs:
             -ldflags "${LDFLAGS}" \
             -o bin/mattermost ./cmd/mattermost
 
-          go build -v -trimpath -o bin/mmctl ./cmd/mmctl
+          # mmctl 的 buildDate 在自己的 commands 套件裡（小寫、非 model.BuildDate），
+          # 與 server/Makefile 的 MMCTL_LDFLAGS 一致；少了它 mmctl version 會顯示 "dev"。
+          MMCTL_PKG='github.com/mattermost/mattermost/server/v8/cmd/mmctl/commands'
+          go build -v -trimpath \
+            -ldflags "-X '${MMCTL_PKG}.buildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)'" \
+            -o bin/mmctl ./cmd/mmctl
 
       - name: 打包
         working-directory: server
@@ -92,9 +97,11 @@ jobs:
         with:
           fetch-depth: 1
 
+      # 用 .nvmrc 而非寫死版本：專案其他 CI 都經由 .github/actions/webapp-setup
+      # 讀同一份，寫死會讓正式產物的 Node 版本與所有品質檢查用的版本不同。
       - uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version-file: .nvmrc
           cache: npm
           cache-dependency-path: webapp/package-lock.json
 
@@ -128,10 +135,8 @@ jobs:
     needs: [build-server, build-webapp]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-
+      # 不做 checkout：這個 job 只需要 artifact 與 GitHub API，
+      # 而本 repo 的 .git 有 1.2GB，checkout 純屬浪費。
       - uses: actions/download-artifact@v4
         with:
           merge-multiple: true
@@ -146,6 +151,7 @@ jobs:
       - name: 建立 Release
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}   # 無 checkout，gh 需靠這個判定目標 repo
           NOTE: ${{ inputs.note }}
         run: |
           set -euo pipefail
@@ -154,32 +160,33 @@ jobs:
           # 非 main 的建置標記為 prerelease。GitHub 的 /releases/latest API 會略過
           # prerelease，因此 pull-deploy.sh 不帶 --tag 時不會誤抓到分支版本——
           # 要部署未合併的分支必須明確指定 --tag，符合「需要明確意圖」的原則。
+          # 「什麼算正式版」只在這裡定義一次，避免標記與說明文字各自判斷而分歧。
           EXTRA=()
-          if [ "${GITHUB_REF_NAME}" = "main" ]; then
-            TITLE="${TAG}"
-          else
+          TITLE="${TAG}"
+          DEPLOY_HINT="部署方式：主機執行 \`scripts/deploy/pull-deploy.sh\`"
+          if [ "${GITHUB_REF_NAME}" != "main" ]; then
             EXTRA=(--prerelease)
             TITLE="${TAG}（分支 ${GITHUB_REF_NAME}）"
+            DEPLOY_HINT=$(printf '⚠️ 此為分支建置（prerelease），不會被 `pull-deploy.sh` 自動選取。\n如需部署：`./scripts/deploy/pull-deploy.sh --tag %s`' "${TAG}")
           fi
+
+          # 用 API 取 commit 資訊，省下為了一行 metadata 而 checkout 1.2GB repo
+          COMMIT_INFO=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}" \
+            --jq '"\(.sha[0:7]) \(.commit.committer.date)\n\(.commit.message | split("\n")[0])"')
 
           {
             echo "來源分支：\`${GITHUB_REF_NAME}\`"
             echo "來源 commit：\`${GITHUB_SHA}\`"
             echo ""
             echo "\`\`\`"
-            git log -1 --format='%h %ci%n%s' "${GITHUB_SHA}"
+            echo "${COMMIT_INFO}"
             echo "\`\`\`"
             if [ -n "${NOTE}" ]; then
               echo ""
               echo "**說明**：${NOTE}"
             fi
             echo ""
-            if [ "${GITHUB_REF_NAME}" = "main" ]; then
-              echo "部署方式：主機執行 \`scripts/deploy/pull-deploy.sh\`"
-            else
-              echo "⚠️ 此為分支建置（prerelease），不會被 \`pull-deploy.sh\` 自動選取。"
-              echo "如需部署：\`./scripts/deploy/pull-deploy.sh --tag ${TAG}\`"
-            fi
+            echo "${DEPLOY_HINT}"
           } > notes.md
 
           # --target 讓 tag 指向實際建置的 commit。省略時 gh 會把 tag 建在預設分支上，

@@ -29,7 +29,20 @@ TAG=""
 
 log()  { printf '%s  %s\n' "$(date '+%H:%M:%S')" "$*"; }
 die()  { printf '\n❌ %s\n' "$*" >&2; exit 1; }
-run()  { if $DRY_RUN; then echo "      [dry-run] $*"; else eval "$@"; fi; }
+run()  { if $DRY_RUN; then printf '      [dry-run] %s\n' "$*"; else "$@"; fi; }
+
+usage() {
+  cat <<'EOF'
+正式環境部署腳本（在主機上執行）
+
+用法：
+  ./pull-deploy.sh                 部署最新的 Release
+  ./pull-deploy.sh --tag <tag>     部署指定版本
+  ./pull-deploy.sh --dry-run       只顯示將要做什麼，不實際變更檔案或服務
+                                   （仍會實際下載並驗證產物）
+  ./pull-deploy.sh --rollback      回到上一版
+EOF
+}
 
 cleanup() { rm -rf "${WORK_DIR}"; }
 trap cleanup EXIT
@@ -42,7 +55,7 @@ while [[ $# -gt 0 ]]; do
     --dry-run)  DRY_RUN=true; shift ;;
     --rollback) ROLLBACK=true; shift ;;
     --tag)      TAG="${2:-}"; shift 2 ;;
-    -h|--help)  sed -n '2,20p' "$0"; exit 0 ;;
+    -h|--help)  usage; exit 0 ;;
     *)          die "未知參數：$1" ;;
   esac
 done
@@ -64,11 +77,10 @@ health_check() {
   local timeout=180   # 總等待上限（秒）
   local interval=5    # 每次檢查間隔（秒）
   local url="${PING_URL}?get_server_status=true"
-  local deadline=$(( SECONDS + timeout ))
   local started=${SECONDS}
   local body=""
 
-  while (( SECONDS < deadline )); do
+  while (( SECONDS - started < timeout )); do
     body=$(curl -sf --max-time 3 "${url}" 2>/dev/null) || body=""
 
     # 注意：'"status":"OK"' 是 '"database_status":"OK"' 的子字串，
@@ -97,12 +109,13 @@ do_rollback() {
   [[ -f "${BIN_DIR}/mattermost.prev" ]] || die "找不到上一版 binary，無法回滾"
   [[ -d "${DIST_DIR}.prev" ]]           || die "找不到上一版前端，無法回滾"
 
-  run "sudo systemctl stop ${SERVICE}"
-  run "mv -f '${BIN_DIR}/mattermost' '${BIN_DIR}/mattermost.failed'"
-  run "mv -f '${BIN_DIR}/mattermost.prev' '${BIN_DIR}/mattermost'"
-  run "rm -rf '${DIST_DIR}.failed' && mv '${DIST_DIR}' '${DIST_DIR}.failed'"
-  run "mv '${DIST_DIR}.prev' '${DIST_DIR}'"
-  run "sudo systemctl start ${SERVICE}"
+  run sudo systemctl stop "${SERVICE}"
+  run mv -f "${BIN_DIR}/mattermost" "${BIN_DIR}/mattermost.failed"
+  run mv -f "${BIN_DIR}/mattermost.prev" "${BIN_DIR}/mattermost"
+  run rm -rf "${DIST_DIR}.failed"
+  run mv "${DIST_DIR}" "${DIST_DIR}.failed"
+  run mv "${DIST_DIR}.prev" "${DIST_DIR}"
+  run sudo systemctl start "${SERVICE}"
 
   if $DRY_RUN || health_check; then
     # 必須清掉版本記錄：回滾後執行中的已不是記錄裡那一版，
@@ -137,9 +150,7 @@ log "   版本：${TAG}"
 # 分支建置會標記為 prerelease，不會出現在 /releases/latest；
 # 只有明確 --tag 指定時才可能走到這裡，此時提醒使用者確認是刻意為之。
 if grep -q '"prerelease": *true' <<< "${META}"; then
-  SRC=$(grep -m1 '來源分支' <<< "${META}" | sed 's/.*來源分支：\\`\([^\\]*\)\\`.*/\1/')
-  log "   ⚠️  這是分支建置（prerelease）${SRC:+，來源分支：${SRC}}"
-  log "       部署未合併的版本請確認是刻意為之"
+  log "   ⚠️  這是分支建置（prerelease），部署未合併的版本請確認是刻意為之"
 fi
 
 # 目前執行中的版本，供比對
@@ -177,24 +188,26 @@ tar xzf "${WORK_DIR}/webapp-dist.tar.gz"        -C "${WORK_DIR}/webapp"
 # 3. 切換（服務會中斷數十秒）
 # ---------------------------------------------------------------------------
 log "⏸️  停止服務"
-run "sudo systemctl stop ${SERVICE}"
+run sudo systemctl stop "${SERVICE}"
 
 log "🔄 切換版本"
-run "rm -f '${BIN_DIR}/mattermost.prev' '${BIN_DIR}/mmctl.prev'"
-run "mv -f '${BIN_DIR}/mattermost' '${BIN_DIR}/mattermost.prev'"
-run "mv -f '${BIN_DIR}/mmctl' '${BIN_DIR}/mmctl.prev' 2>/dev/null || true"
-run "mv '${WORK_DIR}/server/mattermost' '${BIN_DIR}/mattermost'"
-run "mv '${WORK_DIR}/server/mmctl' '${BIN_DIR}/mmctl'"
+run rm -f "${BIN_DIR}/mattermost.prev" "${BIN_DIR}/mmctl.prev"
+run mv -f "${BIN_DIR}/mattermost" "${BIN_DIR}/mattermost.prev"
+if [[ -f "${BIN_DIR}/mmctl" ]]; then
+  run mv -f "${BIN_DIR}/mmctl" "${BIN_DIR}/mmctl.prev"
+fi
+run mv "${WORK_DIR}/server/mattermost" "${BIN_DIR}/mattermost"
+run mv "${WORK_DIR}/server/mmctl" "${BIN_DIR}/mmctl"
 
-run "rm -rf '${DIST_DIR}.prev'"
-run "mv '${DIST_DIR}' '${DIST_DIR}.prev'"
-run "mv '${WORK_DIR}/webapp/dist' '${DIST_DIR}'"
+run rm -rf "${DIST_DIR}.prev"
+run mv "${DIST_DIR}" "${DIST_DIR}.prev"
+run mv "${WORK_DIR}/webapp/dist" "${DIST_DIR}"
 
-run "chmod +x '${BIN_DIR}/mattermost' '${BIN_DIR}/mmctl'"
-run "sudo chown -R mattermost:mattermost '${BIN_DIR}' '${DIST_DIR}'"
+run chmod +x "${BIN_DIR}/mattermost" "${BIN_DIR}/mmctl"
+run sudo chown -R mattermost:mattermost "${BIN_DIR}" "${DIST_DIR}"
 
 log "▶️  啟動服務"
-run "sudo systemctl start ${SERVICE}"
+run sudo systemctl start "${SERVICE}"
 
 # ---------------------------------------------------------------------------
 # 4. 驗證，失敗則自動回滾

@@ -2,7 +2,7 @@
 #
 # ⛔ 此腳本已停用（2026-08-05）
 #
-# 原內容可於 git 歷史取得：git show HEAD~1:devops.sh
+# 原內容：git show f65d75e258:devops.sh
 #
 # 停用原因：
 #   1. 正式主機沒有 node/npm，腳本的前端編譯分支永遠不會執行。它只印一行警告
