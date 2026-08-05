@@ -105,7 +105,12 @@ do_rollback() {
   run "sudo systemctl start ${SERVICE}"
 
   if $DRY_RUN || health_check; then
+    # 必須清掉版本記錄：回滾後執行中的已不是記錄裡那一版，
+    # 若保留舊記錄，下次部署會誤判「已經是這個版本了」而拒絕執行，
+    # 導致回滾之後推不回去。
+    $DRY_RUN || rm -f "${APP_DIR}/.deployed-version"
     log "✅ 回滾完成，服務已恢復"
+    log "   版本記錄已清除，可直接執行部署推回新版"
   else
     die "回滾後服務仍不健康，需要人工介入：sudo journalctl -u ${SERVICE} -n 100"
   fi
