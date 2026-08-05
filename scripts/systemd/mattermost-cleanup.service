@@ -1,0 +1,14 @@
+[Unit]
+Description=Mattermost data cleanup (delete uploads older than 365 days)
+Documentation=file:///usr/local/bin/mattermost-data-cleanup.sh
+ConditionPathIsDirectory=/srv/gopath/src/github.com/zacmm/zacmm2025/server/data
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/mattermost-data-cleanup.sh --quiet
+User=root
+Nice=19
+IOSchedulingClass=idle
+ProtectSystem=full
+ProtectHome=read-only
+NoNewPrivileges=true

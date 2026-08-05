@@ -1384,6 +1384,73 @@ func (_m *PostStore) Update(rctx request.CTX, newPost *model.Post, oldPost *mode
 	return r0, r1
 }
 
+// GetAllPosts provides a mock function with given fields: options
+func (_m *PostStore) GetAllPosts(options *model.GetAllPostsOptions) (*model.PostList, int, error) {
+	ret := _m.Called(options)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetAllPosts")
+	}
+
+	var r0 *model.PostList
+	var r1 int
+	var r2 error
+	if rf, ok := ret.Get(0).(func(*model.GetAllPostsOptions) (*model.PostList, int, error)); ok {
+		return rf(options)
+	}
+	if rf, ok := ret.Get(0).(func(*model.GetAllPostsOptions) *model.PostList); ok {
+		r0 = rf(options)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.PostList)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(*model.GetAllPostsOptions) int); ok {
+		r1 = rf(options)
+	} else {
+		r1 = ret.Get(1).(int)
+	}
+
+	if rf, ok := ret.Get(2).(func(*model.GetAllPostsOptions) error); ok {
+		r2 = rf(options)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
+}
+
+// RemovePostsBetween provides a mock function with given fields: options
+func (_m *PostStore) RemovePostsBetween(options *model.RemovePostsBetweenOptions) ([]*model.Post, error) {
+	ret := _m.Called(options)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RemovePostsBetween")
+	}
+
+	var r0 []*model.Post
+	var r1 error
+	if rf, ok := ret.Get(0).(func(*model.RemovePostsBetweenOptions) ([]*model.Post, error)); ok {
+		return rf(options)
+	}
+	if rf, ok := ret.Get(0).(func(*model.RemovePostsBetweenOptions) []*model.Post); ok {
+		r0 = rf(options)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*model.Post)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(*model.RemovePostsBetweenOptions) error); ok {
+		r1 = rf(options)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // NewPostStore creates a new instance of PostStore. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewPostStore(t interface {

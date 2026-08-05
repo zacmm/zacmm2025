@@ -119,6 +119,8 @@ type SqlStoreStores struct {
 	propertyValue              store.PropertyValueStore
 	accessControlPolicy        store.AccessControlPolicyStore
 	Attributes                 store.AttributesStore
+	whitelist                  store.WhitelistStore
+	invite                     store.InviteStore
 }
 
 type SqlStore struct {
@@ -274,6 +276,8 @@ func New(settings model.SqlSettings, logger mlog.LoggerIFace, metrics einterface
 	store.stores.propertyValue = newPropertyValueStore(store)
 	store.stores.accessControlPolicy = newSqlAccessControlPolicyStore(store, metrics)
 	store.stores.Attributes = newSqlAttributesStore(store, metrics)
+	store.stores.whitelist = newSqlWhitelistStore(store)
+	store.stores.invite = newSqlInviteStore(store)
 
 	store.stores.preference.(*SqlPreferenceStore).deleteUnusedFeatures()
 
@@ -1394,4 +1398,12 @@ func (ss *SqlStore) determineMaxColumnSize(tableName, columnName string) (int, e
 
 func (ss *SqlStore) ScheduledPost() store.ScheduledPostStore {
 	return ss.stores.scheduledPost
+}
+
+func (ss *SqlStore) Whitelist() store.WhitelistStore {
+	return ss.stores.whitelist
+}
+
+func (ss *SqlStore) Invite() store.InviteStore {
+	return ss.stores.invite
 }

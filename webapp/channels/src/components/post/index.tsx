@@ -28,6 +28,7 @@ import {getShortcutReactToLastPostEmittedFrom, getOneClickReactionEmojis} from '
 import {getIsPostBeingEdited, getIsPostBeingEditedInRHS, isEmbedVisible} from 'selectors/posts';
 import {getHighlightedPostId, getRhsState, getSelectedPostCard} from 'selectors/rhs';
 import {getIsMobileView} from 'selectors/views/browser';
+import {makeGetUniqueReactionsToPost} from 'utils/post_utils';
 
 import {isArchivedChannel} from 'utils/channel_utils';
 import {Locations, Preferences, RHSStates} from 'utils/constants';
@@ -63,25 +64,33 @@ function isFirstReply(post: Post, previousPost?: Post | null): boolean {
 }
 
 function isConsecutivePost(state: GlobalState, ownProps: OwnProps) {
-    let post;
-    if (ownProps.postId) {
-        post = getPost(state, ownProps.postId);
-    } else if (ownProps.post) {
-        post = ownProps.post;
-    }
-    const previousPost = ownProps.previousPostId && getPost(state, ownProps.previousPostId);
+    // 客製化修改：停用連續訊息合併功能
+    // 原因：希望每條訊息都顯示完整的使用者資訊（大頭照、名稱、時間）
+    // 而不是將同一使用者連續發送的訊息合併顯示
+    //
+    // 原始邏輯（已註解）：
+    // let post;
+    // if (ownProps.postId) {
+    //     post = getPost(state, ownProps.postId);
+    // } else if (ownProps.post) {
+    //     post = ownProps.post;
+    // }
+    // const previousPost = ownProps.previousPostId && getPost(state, ownProps.previousPostId);
+    //
+    // let consecutivePost = false;
+    //
+    // if (previousPost && post && !post.metadata?.priority?.priority) {
+    //     consecutivePost = areConsecutivePostsBySameUser(post, previousPost);
+    // }
+    // return consecutivePost;
 
-    let consecutivePost = false;
-
-    if (previousPost && post && !post.metadata?.priority?.priority) {
-        consecutivePost = areConsecutivePostsBySameUser(post, previousPost);
-    }
-    return consecutivePost;
+    return false; // 永遠返回 false，禁用連續訊息合併
 }
 
 function makeMapStateToProps() {
     const isPostCommentMention = makeIsPostCommentMention();
     const getReplyCount = makeGetCommentCountForPost();
+    const getReactionsForPost = makeGetUniqueReactionsToPost();
 
     return function mapStateToProps(state: GlobalState, ownProps: OwnProps) {
         let post;
@@ -216,6 +225,7 @@ function makeMapStateToProps() {
             shouldShowDotMenu: shouldShowDotMenu(state, post, channel),
             canDelete: canDeletePost(state, post, channel),
             pluginActions: state.plugins.components.PostAction,
+            reactions: getReactionsForPost(state, post.id),
         };
     };
 }

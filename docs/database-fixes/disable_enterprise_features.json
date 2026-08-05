@@ -1,0 +1,19 @@
+{
+  "ServiceSettings": {
+    "EnableCustomProfileAttributes": false
+  },
+  "FeatureFlags": {
+    "CustomProfileAttributes": false,
+    "EnterprisePlugins": false,
+    "DataRetention": false,
+    "MessageExport": false,
+    "Elasticsearch": false,
+    "Compliance": false,
+    "LDAP": false,
+    "SAML": false,
+    "Cluster": false,
+    "Metrics": false,
+    "CustomTermsOfService": false,
+    "GuestAccounts": false
+  }
+}

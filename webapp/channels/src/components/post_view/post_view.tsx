@@ -15,6 +15,7 @@ type Props = {
     channelId: string;
     focusedPostId?: string;
     unreadScrollPosition: string;
+    messageFilter?: string;
 };
 
 interface State {
@@ -99,6 +100,7 @@ export default class PostView extends React.PureComponent<Props, State> {
                     shouldStartFromBottomWhenUnread={this.state.shouldStartFromBottomWhenUnread}
                     toggleShouldStartFromBottomWhenUnread={this.toggleShouldStartFromBottomWhenUnread}
                     focusedPostId={this.props.focusedPostId}
+                    messageFilter={this.props.messageFilter}
                 />
             </div>
         );

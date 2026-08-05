@@ -4,6 +4,7 @@
 package model
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -290,4 +291,18 @@ func (o *Team) IsGroupConstrained() bool {
 func (o *Team) ShallowCopy() *Team {
 	c := *o
 	return &c
+}
+
+type InviteItem struct {
+	InviteId string `json:"invite_id"`
+	TeamId   string `json:"team_id,omitempty"`
+}
+
+func (t *InviteItem) ToJson() []byte {
+	b, err := json.Marshal(t)
+	if err != nil {
+		return []byte{}
+	}
+
+	return b
 }

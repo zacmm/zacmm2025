@@ -181,7 +181,7 @@ const ProfilePopover = ({
                 />
                 <hr/>
                 <ProfilePopoverEmail
-                    email={Utils.getEmail(user)}
+                    email={user.email}
                     haveOverrideProp={haveOverrideProp}
                     isBot={user.is_bot}
                 />

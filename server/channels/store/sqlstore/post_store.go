@@ -6,9 +6,11 @@ package sqlstore
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -2204,40 +2206,52 @@ func (s *SqlPostStore) search(teamId string, userId string, params *model.Search
 		searchClause := fmt.Sprintf("to_tsvector('%[1]s', %[2]s) @@  to_tsquery('%[1]s', ?)", textSearchCfg, searchType)
 		baseQuery = baseQuery.Where(searchClause, tsQueryClause)
 	} else if s.DriverName() == model.DatabaseDriverMysql {
-		if searchType == "Message" {
-			terms, err = removeMysqlStopWordsFromTerms(terms)
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to remove Mysql stop-words from terms")
-			}
+		// 檢測是否包含特殊字符（逗號、$、#等），如果有則使用 LIKE 查詢
+		hasSpecialChars := strings.ContainsAny(params.Terms, ",$#@")
 
-			if terms == "" {
-				return list, nil
-			}
-		}
-
-		excludeClause := ""
-		if excludedTerms != "" {
-			excludeClause = " -(" + excludedTerms + ")"
-		}
-
-		var termsClause string
-		if params.OrTerms {
-			termsClause = terms + excludeClause
+		if hasSpecialChars && searchType == "Message" {
+			// 使用 LIKE 查詢來處理包含特殊字符的搜尋
+			// 這樣可以搜尋到像 "1,234" 或 "$1,234" 這樣的內容
+			likePattern := "%" + params.Terms + "%"
+			searchClause := fmt.Sprintf("q2.%s LIKE ?", searchType)
+			baseQuery = baseQuery.Where(searchClause, likePattern)
 		} else {
-			splitTerms := []string{}
-			for _, t := range strings.Fields(terms) {
-				splitTerms = append(splitTerms, "+"+t)
+			// 使用原本的 FULLTEXT 搜尋（快速）
+			if searchType == "Message" {
+				terms, err = removeMysqlStopWordsFromTerms(terms)
+				if err != nil {
+					return nil, errors.Wrap(err, "failed to remove Mysql stop-words from terms")
+				}
+
+				if terms == "" {
+					return list, nil
+				}
 			}
-			termsClause = strings.Join(splitTerms, " ") + excludeClause
+
+			excludeClause := ""
+			if excludedTerms != "" {
+				excludeClause = " -(" + excludedTerms + ")"
+			}
+
+			var termsClause string
+			if params.OrTerms {
+				termsClause = terms + excludeClause
+			} else {
+				splitTerms := []string{}
+				for _, t := range strings.Fields(terms) {
+					splitTerms = append(splitTerms, "+"+t)
+				}
+				termsClause = strings.Join(splitTerms, " ") + excludeClause
+			}
+
+			searchClause := fmt.Sprintf("MATCH (%s) AGAINST (? IN BOOLEAN MODE)", searchType)
+
+			if params.IsHashtag {
+				termsClause = "\"" + termsClause + "\""
+			}
+
+			baseQuery = baseQuery.Where(searchClause, termsClause)
 		}
-
-		searchClause := fmt.Sprintf("MATCH (%s) AGAINST (? IN BOOLEAN MODE)", searchType)
-
-		if params.IsHashtag {
-			termsClause = "\"" + termsClause + "\""
-		}
-
-		baseQuery = baseQuery.Where(searchClause, termsClause)
 	}
 
 	inQuery := s.getSubQueryBuilder().Select("Id").
@@ -3471,4 +3485,190 @@ func (s *SqlPostStore) RefreshPostStats() error {
 	}
 
 	return nil
+}
+
+// Helper functions for type conversion during debugging
+func getString(val interface{}) string {
+	if val == nil {
+		return ""
+	}
+	if s, ok := val.(string); ok {
+		return s
+	}
+	if b, ok := val.([]byte); ok {
+		return string(b)
+	}
+	return fmt.Sprintf("%v", val)
+}
+
+func getInt64(val interface{}) int64 {
+	if val == nil {
+		return 0
+	}
+	if i, ok := val.(int64); ok {
+		return i
+	}
+	if i, ok := val.(int); ok {
+		return int64(i)
+	}
+	if i, ok := val.(int32); ok {
+		return int64(i)
+	}
+	if s, ok := val.(string); ok {
+		if i, err := strconv.ParseInt(s, 10, 64); err == nil {
+			return i
+		}
+	}
+	return 0
+}
+
+func getBool(val interface{}) bool {
+	if val == nil {
+		return false
+	}
+	if b, ok := val.(bool); ok {
+		return b
+	}
+	if i, ok := val.(int64); ok {
+		return i != 0
+	}
+	if i, ok := val.(int); ok {
+		return i != 0
+	}
+	if s, ok := val.(string); ok {
+		return s == "1" || s == "true"
+	}
+	return false
+}
+
+func getStringInterface(val interface{}) model.StringInterface {
+	if val == nil {
+		return make(model.StringInterface)
+	}
+	if s, ok := val.(string); ok {
+		var props model.StringInterface
+		if err := json.Unmarshal([]byte(s), &props); err == nil {
+			return props
+		}
+	}
+	return make(model.StringInterface)
+}
+
+func getStringArray(val interface{}) model.StringArray {
+	if val == nil {
+		return model.StringArray{}
+	}
+	if s, ok := val.(string); ok {
+		var arr model.StringArray
+		if err := json.Unmarshal([]byte(s), &arr); err == nil {
+			return arr
+		}
+	}
+	return model.StringArray{}
+}
+
+func (s *SqlPostStore) GetAllPosts(options *model.GetAllPostsOptions) (*model.PostList, int, error) {
+	fmt.Printf("=== SqlPostStore.GetAllPosts START ===\n")
+	
+	// Add defaults if not set
+	if options.PerPage == 0 {
+		options.PerPage = 20
+	}
+	
+	fmt.Printf("DEBUG SqlPostStore.GetAllPosts: Options - StartDate=%d, EndDate=%d, UserId=%s, Keyword=%s, Page=%d, PerPage=%d\n", 
+		options.StartDate, options.EndDate, options.UserId, options.Keyword, options.Page, options.PerPage)
+	
+	// Convert named parameters to positional parameters like the working methods
+	var args []interface{}
+	countQuery := "SELECT COUNT(*) FROM Posts WHERE DeleteAt = 0 AND Posts.Type NOT LIKE 'system_%' AND CreateAt >= ? AND CreateAt <= ?"
+	args = append(args, options.StartDate, options.EndDate)
+	
+	// Add user filtering if specified
+	if options.UserId != "" {
+		countQuery += " AND UserId = ?"
+		args = append(args, options.UserId)
+	}
+	
+	// Add keyword filtering if specified  
+	if options.Keyword != "" {
+		countQuery += " AND Message LIKE ?"
+		args = append(args, "%" + options.Keyword + "%")
+	}
+	
+	var count int64
+	err := s.GetReplica().Get(&count, countQuery, args...)
+	if err != nil {
+		fmt.Printf("ERROR SqlPostStore.GetAllPosts: Count query failed: %v\n", err)
+		return nil, 0, errors.Wrap(err, "failed to count posts")
+	}
+	fmt.Printf("DEBUG SqlPostStore.GetAllPosts: Count query successful, count=%d\n", count)
+	
+	// Now get the posts with pagination
+	fetchQuery := "SELECT * FROM Posts WHERE DeleteAt = 0 AND Posts.Type NOT LIKE 'system_%' AND CreateAt >= ? AND CreateAt <= ?"
+	fetchArgs := []interface{}{options.StartDate, options.EndDate}
+	
+	// Add user filtering if specified
+	if options.UserId != "" {
+		fetchQuery += " AND UserId = ?"
+		fetchArgs = append(fetchArgs, options.UserId)
+	}
+	
+	// Add keyword filtering if specified  
+	if options.Keyword != "" {
+		fetchQuery += " AND Message LIKE ?"
+		fetchArgs = append(fetchArgs, "%" + options.Keyword + "%")
+	}
+	
+	fetchQuery += " ORDER BY CreateAt ASC LIMIT ? OFFSET ?"
+	fetchArgs = append(fetchArgs, options.PerPage, options.Page * options.PerPage)
+	
+	var posts []*model.Post
+	err = s.GetReplica().Select(&posts, fetchQuery, fetchArgs...)
+	if err != nil {
+		fmt.Printf("ERROR SqlPostStore.GetAllPosts: Select failed: %v\n", err)
+		return nil, 0, errors.Wrap(err, "failed to find Posts")
+	}
+	
+	fmt.Printf("DEBUG SqlPostStore.GetAllPosts: Select successful, found %d posts\n", len(posts))
+	
+	fmt.Printf("DEBUG SqlPostStore.GetAllPosts: Total posts found: %d, total count: %d\n", len(posts), count)
+
+	list := model.NewPostList()
+
+	for _, p := range posts {
+		list.AddPost(p)
+		list.AddOrder(p.Id)
+	}
+
+	list.MakeNonNil()
+	
+	fmt.Printf("DEBUG SqlPostStore.GetAllPosts: Returning list with %d posts, total count=%d\n", len(list.Posts), int(count))
+	fmt.Printf("=== SqlPostStore.GetAllPosts END ===\n")
+
+	return list, int(count), nil
+}
+
+func (s *SqlPostStore) RemovePostsBetween(options *model.RemovePostsBetweenOptions) ([]*model.Post, error) {
+
+	termsMap := map[string]interface{}{"StartTime": options.StartTime, "EndTime": options.EndTime}
+	query := " from Posts WHERE CreateAt >= :StartTime AND CreateAt <= :EndTime AND DeleteAt = 0"
+
+	// Use NamedQuery instead of Select with a map
+	rows, err := s.GetReplica().NamedQuery("SELECT *"+query, termsMap)
+	if err != nil {
+		return []*model.Post{}, errors.Wrap(err, "failed to find Posts")
+	}
+	defer rows.Close()
+	
+	posts := []*model.Post{}
+	for rows.Next() {
+		var post model.Post
+		err = rows.StructScan(&post)
+		if err != nil {
+			return []*model.Post{}, errors.Wrap(err, "failed to scan post")
+		}
+		posts = append(posts, &post)
+	}
+
+	return posts, nil
 }

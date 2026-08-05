@@ -230,7 +230,35 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Referrer-Policy", "no-referrer")
 
+	// Get all possible IP addresses for whitelist checking
+	userIps := append(r.Header["X-Forwarded-For"], r.Header["X-Real-IP"]...)
+	// Also include the direct client IP (important for localhost and non-proxied connections)
+	clientIP := utils.GetIPAddress(r, c.App.Config().ServiceSettings.TrustedProxyIPHeader)
+	if clientIP != "" {
+		userIps = append(userIps, clientIP)
+	}
+
 	if h.IsStatic {
+		// we need to check if users are logged in and then whitelisted
+		if c.AppContext.Session() != nil {
+			// check if user is whitelisted
+			isWhitelisted, err := c.App.CheckUserIPWhitelisted(c.AppContext, c.AppContext.Session().UserId, userIps)
+			if err != nil {
+				c.Logger.Error("Error checking IP whitelist", mlog.Err(err))
+				c.Err = model.NewAppError("ServeHTTP", "api.context.whitelist.check_error.app_error", nil, "", http.StatusInternalServerError)
+				return
+			}
+			if !isWhitelisted {
+				c.Logger.Warn("Access denied: IP not in whitelist",
+					mlog.String("user_id", c.AppContext.Session().UserId),
+					mlog.String("ip", c.AppContext.IPAddress()),
+					mlog.String("path", r.URL.Path))
+				// Clear session cookie and return 401 to force redirect to login page, similar to session expiry
+				c.RemoveSessionCookie(w, r)
+				c.Err = model.NewAppError("ServeHTTP", "api.context.ip_whitelist_denied.app_error",
+					nil, "", http.StatusUnauthorized)
+			}
+		}
 		// Instruct the browser not to display us in an iframe unless is the same origin for anti-clickjacking
 		w.Header().Set("X-Frame-Options", "SAMEORIGIN")
 
@@ -317,6 +345,27 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if c.Err == nil && h.RequireSession {
 		c.SessionRequired()
+	}
+
+	if h.RequireSession {
+		// Skip whitelist check for certain paths (login, public endpoints, etc.)
+		shouldSkip := h.shouldSkipWhitelistCheck(r.URL.Path)
+		if !shouldSkip {
+			isWhitelisted, err := c.App.CheckUserIPWhitelisted(c.AppContext, c.AppContext.Session().UserId, userIps)
+			if err != nil {
+				c.Logger.Error("Error checking IP whitelist", mlog.Err(err))
+				c.Err = model.NewAppError("ServeHTTP", "api.context.whitelist.check_error.app_error", nil, "", http.StatusInternalServerError)
+			} else if !isWhitelisted {
+				c.Logger.Warn("Access denied: IP not in whitelist",
+					mlog.String("user_id", c.AppContext.Session().UserId),
+					mlog.String("ip", c.AppContext.IPAddress()),
+					mlog.String("path", r.URL.Path))
+				// Clear session cookie and return 401 to force redirect to login page, similar to session expiry
+				c.RemoveSessionCookie(w, r)
+				c.Err = model.NewAppError("ServeHTTP", "api.context.ip_whitelist_denied.app_error",
+					nil, "", http.StatusUnauthorized)
+			}
+		}
 	}
 
 	if c.Err == nil && h.RequireMfa {
@@ -504,6 +553,42 @@ func (h *Handler) checkCSRFToken(c *Context, r *http.Request, token string, toke
 	}
 
 	return csrfCheckNeeded, csrfCheckPassed
+}
+
+// shouldSkipWhitelistCheck determines if the whitelist check should be skipped for certain paths
+func (h *Handler) shouldSkipWhitelistCheck(path string) bool {
+	skipPaths := []string{
+		"/api/v4/users/login",
+		"/api/v4/users/logout",
+		"/api/v4/users/me",                      // Get current user info
+		"/api/v4/users/me/teams",                // Get user's teams after login
+		"/api/v4/users/me/preferences",          // Get user preferences
+		"/api/v4/users/me/teams/members",        // Get user's team memberships
+		"/api/v4/users/me/teams/unread",         // Get unread team counts
+		"/api/v4/system/ping",
+		"/api/v4/config/client",
+		"/api/v4/license/client",                // Get license info
+		"/api/v4/teams",                         // List all teams (needed for team selection page)
+		"/api/v4/teams/invite/",                 // Team invite info lookup (before joining)
+		"/api/v4/teams/members/invite",          // Team invite join endpoint
+		"/api/v4/roles/names",                   // Get role information
+		"/api/v4/users/ids",                     // Get user info by IDs
+		"/api/v4/custom_profile_attributes/",    // Custom profile attributes
+		"/api/v4/plugins/webapp",                // Plugin manifests
+		"/login",
+		"/signup",
+		"/static/",
+		"/fonts/",
+		"/images/",
+	}
+
+	for _, skipPath := range skipPaths {
+		if strings.HasPrefix(path, skipPath) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // APIHandler provides a handler for API endpoints which do not require the user to be logged in order for access to be

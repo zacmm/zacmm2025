@@ -12,4 +12,9 @@ type PostInfo struct {
 	TeamType           string      `json:"team_type"`
 	TeamDisplayName    string      `json:"team_display_name"`
 	HasJoinedTeam      bool        `json:"has_joined_team"`
+	// Legacy fields for admin posts functionality
+	// Note: removed omitempty to ensure fields are always present in JSON response
+	ChannelName string `json:"channel_name"`
+	TeamName    string `json:"team_name"`
+	Members     string `json:"members,omitempty"`
 }

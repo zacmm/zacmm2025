@@ -17,8 +17,8 @@ import {getLicense} from 'mattermost-redux/selectors/entities/general';
 import {haveISystemPermission} from 'mattermost-redux/selectors/entities/roles_helpers';
 import {isSystemAdmin, isGuest} from 'mattermost-redux/utils/user_utils';
 
-import {adminResetMfa} from 'actions/admin_actions';
-import {openModal} from 'actions/views/modals';
+import {adminResetMfa, adminGetWhitelist} from 'actions/admin_actions';
+import {openModal, closeModal} from 'actions/views/modals';
 import {getShowManageUserSettings} from 'selectors/admin_console';
 
 import ManageRolesModal from 'components/admin_console/manage_roles_modal';
@@ -26,6 +26,7 @@ import ManageTeamsModal from 'components/admin_console/manage_teams_modal';
 import ManageTokensModal from 'components/admin_console/manage_tokens_modal';
 import ResetEmailModal from 'components/admin_console/reset_email_modal';
 import ResetPasswordModal from 'components/admin_console/reset_password_modal';
+import WhitelistModal from 'components/admin_console/whitelist_modal/whitelist_modal';
 import * as Menu from 'components/menu';
 import SystemPermissionGate from 'components/permissions_gates/system_permission_gate';
 import UserSettingsModal from 'components/user_settings/modal';
@@ -257,6 +258,32 @@ export function SystemUsersListAction({user, currentUser, tableId, rowIndex, onE
             },
         }));
     }, [user, currentUser.id, onError]);
+
+    const handleWhitelistClick = useCallback(() => {
+        function getWhitelist(userId: string) {
+            adminGetWhitelist(
+                userId, 
+                (whitelist: string[]) => {
+                    dispatch(openModal({
+                        modalId: ModalIdentifiers.WHITELIST_MODAL,
+                        dialogType: WhitelistModal,
+                        dialogProps: {
+                            user,
+                            whitelist,
+                            onModalDismissed: () => dispatch(closeModal(ModalIdentifiers.WHITELIST_MODAL)),
+                            getWhitelist,
+                        },
+                    }));
+                },
+                (error: any) => {
+                    console.error('Error fetching whitelist:', error);
+                    onError(error);
+                }
+            );
+        }
+
+        getWhitelist(user.id);
+    }, [user, dispatch, onError]);
 
     const handleReSyncUserViaLdapGroupsClick = useCallback(() => {
         dispatch(openModal({
@@ -528,6 +555,18 @@ export function SystemUsersListAction({user, currentUser, tableId, rowIndex, onE
                             />
                         }
                         onClick={handleRemoveSessionsClick}
+                    />
+                }
+                {!user.delete_at &&
+                    <Menu.Item
+                        id={`${menuItemIdPrefix}-whitelist`}
+                        labels={
+                            <FormattedMessage
+                                id='admin.system_users.list.actions.menu.whitelist'
+                                defaultMessage='設置IP白名單'
+                            />
+                        }
+                        onClick={handleWhitelistClick}
                     />
                 }
             </SystemPermissionGate>

@@ -576,10 +576,6 @@
     "translation": "The provided role is managed by a Scheme and therefore cannot be applied directly to a Channel Member."
   },
   {
-    "id": "api.channel.update_channel_member_roles.unset_user_scheme.app_error",
-    "translation": "Invalid channel member update: A channel member always has a user scheme."
-  },
-  {
     "id": "api.channel.update_channel_member_roles.user_and_guest.app_error",
     "translation": "Invalid channel member update: A guest cannot be set for a single channel, a System Admin must promote or demote users to/from guests."
   },
@@ -2887,10 +2883,6 @@
     "translation": "Remote Cluster not found"
   },
   {
-    "id": "api.remote_cluster.import_not_allowed.app_error",
-    "translation": "Remote cluster import is not allowed"
-  },
-  {
     "id": "api.remote_cluster.invalid_id.app_error",
     "translation": "Invalid id."
   },
@@ -3239,10 +3231,6 @@
     "translation": "The channels of the invite must be part of the team of the invite."
   },
   {
-    "id": "api.team.invite_guests.policy_enforced_channel.app_error",
-    "translation": "Cannot invite guests users to this channel because it has access restrictions based on user attributes."
-  },
-  {
     "id": "api.team.invite_guests_to_channels.disabled.error",
     "translation": "Guest accounts are disabled"
   },
@@ -3393,10 +3381,6 @@
   {
     "id": "api.team.update_team_member_roles.guest_and_user.app_error",
     "translation": "Invalid team member update: A user must be a guest or a user but not both."
-  },
-  {
-    "id": "api.team.update_team_member_roles.unset_user_scheme.app_error",
-    "translation": "Invalid team member update: A team member always has a user scheme."
   },
   {
     "id": "api.team.update_team_member_roles.user_and_guest.app_error",
@@ -4137,10 +4121,6 @@
   {
     "id": "api.user.get_users.validation.app_error",
     "translation": "Error fetching roles during validation."
-  },
-  {
-    "id": "api.user.get_users_not_in_abac_channel.access_control_unavailable.app_error",
-    "translation": "Access control service unavailable. Cannot filter users for ABAC-enabled channel."
   },
   {
     "id": "api.user.invalidate_password_recovery_tokens.error",

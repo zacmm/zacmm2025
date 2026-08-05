@@ -2818,3 +2818,102 @@ func (a *App) SendTestMessage(c request.CTX, userID string) (*model.Post, *model
 
 	return post, nil
 }
+
+func (a *App) GetAllPosts(c request.CTX, options *model.GetAllPostsOptions) (*model.PostList, int, *map[string]model.PostInfo, *model.AppError) {
+	c.Logger().Debug("=== App.GetAllPosts START ===")
+	c.Logger().Debug("App.GetAllPosts: Options received", 
+		mlog.String("userId", options.UserId),
+		mlog.String("keyword", options.Keyword),
+		mlog.Int("startDate", int(options.StartDate)),
+		mlog.Int("endDate", int(options.EndDate)),
+		mlog.Int("page", options.Page),
+		mlog.Int("perPage", options.PerPage))
+
+	c.Logger().Debug("App.GetAllPosts: Calling store GetAllPosts")
+	postList, totalPosts, err := a.Srv().Store().Post().GetAllPosts(options)
+	if err != nil {
+		c.Logger().Error("App.GetAllPosts: Store GetAllPosts failed", mlog.Err(err))
+		return nil, 0, nil, model.NewAppError("GetAllPosts", "app.post.get_root_posts.app_error", nil, err.Error(), http.StatusInternalServerError)
+	}
+	c.Logger().Debug("App.GetAllPosts: Store GetAllPosts succeeded", 
+		mlog.Int("totalPosts", totalPosts),
+		mlog.Int("postListCount", len(postList.Posts)))
+
+	c.Logger().Debug("App.GetAllPosts: Building post info map")
+	postInfoMap := make(map[string]model.PostInfo)
+	for postId, post := range postList.Posts {
+		postInfo := model.PostInfo{}
+		channelId := post.ChannelId
+		
+		// Get channel information (matching legacy logic)
+		channel, appErr := a.GetChannel(c, channelId)
+		if appErr != nil {
+			c.Logger().Error("App.GetAllPosts: Failed to get channel", mlog.String("channelId", channelId), mlog.Err(appErr))
+			continue
+		}
+		
+		// Set legacy ChannelName field (for admin console display)
+		postInfo.ChannelName = channel.DisplayName
+		
+		// Handle Direct Message channels (legacy logic from 2021 version)
+		if channel.Type == model.ChannelTypeDirect {
+			// Parse member IDs from channel name (format: userid1__userid2)
+			memberIds := strings.Split(channel.Name, "__")
+			var memberNames []string
+			for _, memberId := range memberIds {
+				member, appErr := a.GetUser(memberId)
+				if appErr != nil {
+					c.Logger().Error("App.GetAllPosts: Failed to get user", mlog.String("userId", memberId), mlog.Err(appErr))
+					continue
+				}
+				memberNames = append(memberNames, member.Username)
+			}
+			postInfo.Members = strings.Join(memberNames, ", ")
+		} else {
+			// Handle Team channels - get team information (legacy logic)
+			if channel.TeamId != "" {
+				team, appErr := a.GetTeam(channel.TeamId)
+				if appErr != nil {
+					c.Logger().Error("App.GetAllPosts: Failed to get team", mlog.String("teamId", channel.TeamId), mlog.Err(appErr))
+				} else {
+					postInfo.TeamName = team.DisplayName
+				}
+			}
+		}
+		
+		c.Logger().Debug("App.GetAllPosts: Built PostInfo", 
+			mlog.String("postId", postId),
+			mlog.String("channelName", postInfo.ChannelName),
+			mlog.String("teamName", postInfo.TeamName),
+			mlog.String("members", postInfo.Members))
+		
+		postInfoMap[postId] = postInfo
+	}
+	c.Logger().Debug("App.GetAllPosts: Post info map built", mlog.Int("postInfoMapSize", len(postInfoMap)))
+
+	c.Logger().Debug("=== App.GetAllPosts END ===")
+	return postList, totalPosts, &postInfoMap, nil
+}
+
+func (a *App) RemovePostsBetween(c request.CTX, options *model.RemovePostsBetweenOptions) (int, *model.AppError) {
+	removedPosts, err := a.Srv().Store().Post().RemovePostsBetween(options)
+	if err != nil {
+		return 0, model.NewAppError("RemovePostsBetween", "app.post.remove_posts_between.app_error", nil, err.Error(), http.StatusInternalServerError)
+	}
+	userId := c.Session().UserId
+	
+	// Create a background context for the deletion goroutine
+	ctx := c.WithContext(context.Background())
+	go func(){
+		for _, post := range removedPosts {
+			_, err := a.DeletePost(ctx, post.Id, userId)
+			if err != nil {
+				c.Logger().Error("Failed to delete post during mass deletion", 
+					mlog.String("postId", post.Id), 
+					mlog.Err(err))
+			}
+		}
+	}()
+
+	return len(removedPosts), nil
+}

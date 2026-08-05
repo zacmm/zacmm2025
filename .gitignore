@@ -4,7 +4,8 @@ logs
 node_modules
 /data
 /dist
-/webapp/dist
+# /webapp/dist  # 註解掉，讓前端編譯產物可以被追蹤
+# 注意：由於遠端伺服器沒有 Node.js，需要將編譯好的前端推送到 Git
 jobserver
 npm-debug.log
 webapp/yarn-error.log
@@ -127,6 +128,17 @@ web/sass-files/sass/.sass-cache/
 # Default local file storage
 data/*
 webapp/data/*
+webapp/.npm-cache/*
+
+# Claude AI files
+# 註：CLAUDE.md 已納入版控（上游忽略它，本 fork 用它記錄專案特有的部署與架構知識）
+**/CLAUDE.local.md
+.claude/
+
+# Scripts containing sensitive information
+scripts/fix_emoji_images.sh
+scripts/fix_team_permissions.sh 
+scripts/test_team_join.sh
 api/data/*
 api4/data/*
 app/data/*
@@ -161,5 +173,6 @@ docker-compose.override.yaml
 .env
 
 **/CLAUDE.local.md
-CLAUDE.md
+# CLAUDE.md 納入版控（上游忽略它，但本 fork 用它記錄專案特有的部署與架構知識）
 .cursorrules
+.claude/

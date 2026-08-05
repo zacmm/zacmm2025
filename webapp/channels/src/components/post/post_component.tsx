@@ -8,6 +8,7 @@ import {FormattedMessage} from 'react-intl';
 
 import type {Emoji} from '@mattermost/types/emojis';
 import type {Post} from '@mattermost/types/posts';
+import type {Reaction as ReactionType} from '@mattermost/types/reactions';
 import type {Team} from '@mattermost/types/teams';
 import type {UserProfile} from '@mattermost/types/users';
 
@@ -119,6 +120,7 @@ export type Props = {
     isCardOpen?: boolean;
     canDelete?: boolean;
     pluginActions: PostActionComponent[];
+    reactions: { [x: string]: ReactionType } | undefined | null;
 };
 
 function PostComponent(props: Props) {
@@ -653,16 +655,18 @@ function PostComponent(props: Props) {
                                     handleFileDropdownOpened={handleFileDropdownOpened}
                                 />
                             }
-                            <div className='post__body-reactions-acks'>
-                                {props.isPostAcknowledgementsEnabled && post.metadata?.priority?.requested_ack && (
-                                    <PostAcknowledgements
-                                        authorId={post.user_id}
-                                        isDeleted={post.state === Posts.POST_DELETED}
-                                        postId={post.id}
-                                    />
-                                )}
-                                {showReactions && <ReactionList post={post}/>}
-                            </div>
+                            {((props.isPostAcknowledgementsEnabled && post.metadata?.priority?.requested_ack) || (showReactions && props.reactions && Object.keys(props.reactions).length > 0)) && (
+                                <div className='post__body-reactions-acks'>
+                                    {props.isPostAcknowledgementsEnabled && post.metadata?.priority?.requested_ack && (
+                                        <PostAcknowledgements
+                                            authorId={post.user_id}
+                                            isDeleted={post.state === Posts.POST_DELETED}
+                                            postId={post.id}
+                                        />
+                                    )}
+                                    {showReactions && <ReactionList post={post}/>}
+                                </div>
+                            )}
                             {threadFooter}
                         </div>
                     </div>

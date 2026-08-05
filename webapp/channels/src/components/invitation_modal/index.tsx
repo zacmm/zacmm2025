@@ -9,7 +9,7 @@ import type {Dispatch} from 'redux';
 import type {Channel} from '@mattermost/types/channels';
 
 import {searchChannels as reduxSearchChannels} from 'mattermost-redux/actions/channels';
-import {regenerateTeamInviteId} from 'mattermost-redux/actions/teams';
+import {regenerateTeamInviteId, getInviteId} from 'mattermost-redux/actions/teams';
 import {getProfiles, searchProfiles as reduxSearchProfiles} from 'mattermost-redux/actions/users';
 import {Permissions} from 'mattermost-redux/constants';
 import {getCurrentChannel, getChannelsInCurrentTeam, getChannelsNameMapInCurrentTeam} from 'mattermost-redux/selectors/entities/channels';
@@ -47,7 +47,6 @@ const searchChannels = (teamId: string, term: string) => {
 
 type OwnProps = {
     channelToInvite?: Channel;
-    canInviteGuests?: boolean;
 }
 
 export function mapStateToProps(state: GlobalState, props: OwnProps) {
@@ -73,9 +72,7 @@ export function mapStateToProps(state: GlobalState, props: OwnProps) {
     const emailInvitationsEnabled = config.EnableEmailInvitations === 'true';
     const isEnterpriseReady = config.BuildEnterpriseReady === 'true';
     const isGroupConstrained = Boolean(currentTeam?.group_constrained);
-    const calculatedCanInviteGuests = !isGroupConstrained && isEnterpriseReady && guestAccountsEnabled && haveICurrentTeamPermission(state, Permissions.INVITE_GUEST);
-    const canInviteGuests = props.canInviteGuests === undefined ? calculatedCanInviteGuests : (calculatedCanInviteGuests && props.canInviteGuests);
-
+    const canInviteGuests = !isGroupConstrained && isEnterpriseReady && guestAccountsEnabled && haveICurrentTeamPermission(state, Permissions.INVITE_GUEST);
     const isCloud = license.Cloud === 'true';
 
     const canAddUsers = haveICurrentTeamPermission(state, Permissions.ADD_USER_TO_TEAM);
@@ -101,6 +98,7 @@ function mapDispatchToProps(dispatch: Dispatch) {
             sendMembersInvites,
             sendMembersInvitesToChannels,
             regenerateTeamInviteId,
+            getInviteId,
             searchProfiles,
             searchChannels,
         }, dispatch),

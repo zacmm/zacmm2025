@@ -50,7 +50,7 @@ const (
 	PushThreadsNotifyProp          = "push_threads"
 	EmailThreadsNotifyProp         = "email_threads"
 
-	DefaultLocale        = "en"
+	DefaultLocale        = "zh-TW"
 	UserAuthServiceEmail = "email"
 
 	UserEmailMaxLength    = 128
@@ -241,19 +241,6 @@ type UserForIndexing struct {
 type ViewUsersRestrictions struct {
 	Teams    []string
 	Channels []string
-}
-
-//msgp:ignore GetUsersNotInChannelOptions
-type GetUsersNotInChannelOptions struct {
-	TeamID string `json:"team_id"`
-	// Page-based pagination (used for non-ABAC channels)
-	// This will be discarded if the channel has an ABAC policy and CursorID will be used.
-	Page  int `json:"page"`
-	Limit int `json:"limit"`
-	// Cursor-based pagination (used for ABAC channels)
-	// If CursorID is empty for ABAC channels, it will start from the beginning
-	CursorID string `json:"cursor_id"`
-	Etag     string `json:"etag"`
 }
 
 func (r *ViewUsersRestrictions) Hash() string {

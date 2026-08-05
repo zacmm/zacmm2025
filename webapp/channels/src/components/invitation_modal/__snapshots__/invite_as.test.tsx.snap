@@ -33,7 +33,6 @@ exports[`components/cloud_start_trial_btn/cloud_start_trial_btn should match sna
   }
 >
   <InviteAs
-    canInviteGuests={true}
     inviteType="MEMBER"
     setInviteAs={[MockFunction]}
     titleClass="title"

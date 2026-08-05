@@ -627,6 +627,15 @@ export function getTeamInviteInfo(inviteId: string) {
     });
 }
 
+export function getInviteId(teamId: string) {
+    return bindClientFunc({
+        clientFunc: Client4.getInviteId,
+        params: [
+            teamId,
+        ],
+    });
+}
+
 export function checkIfTeamExists(teamName: string): ActionFuncAsync<boolean> {
     return async (dispatch, getState) => {
         let data;

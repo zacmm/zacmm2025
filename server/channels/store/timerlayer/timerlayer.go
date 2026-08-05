@@ -35,6 +35,7 @@ type TimerLayer struct {
 	EmojiStore                      store.EmojiStore
 	FileInfoStore                   store.FileInfoStore
 	GroupStore                      store.GroupStore
+	InviteStore                     store.InviteStore
 	JobStore                        store.JobStore
 	LicenseStore                    store.LicenseStore
 	LinkMetadataStore               store.LinkMetadataStore
@@ -70,6 +71,7 @@ type TimerLayer struct {
 	UserAccessTokenStore            store.UserAccessTokenStore
 	UserTermsOfServiceStore         store.UserTermsOfServiceStore
 	WebhookStore                    store.WebhookStore
+	WhitelistStore                  store.WhitelistStore
 }
 
 func (s *TimerLayer) AccessControlPolicy() store.AccessControlPolicyStore {
@@ -134,6 +136,10 @@ func (s *TimerLayer) FileInfo() store.FileInfoStore {
 
 func (s *TimerLayer) Group() store.GroupStore {
 	return s.GroupStore
+}
+
+func (s *TimerLayer) Invite() store.InviteStore {
+	return s.InviteStore
 }
 
 func (s *TimerLayer) Job() store.JobStore {
@@ -276,6 +282,10 @@ func (s *TimerLayer) Webhook() store.WebhookStore {
 	return s.WebhookStore
 }
 
+func (s *TimerLayer) Whitelist() store.WhitelistStore {
+	return s.WhitelistStore
+}
+
 type TimerLayerAccessControlPolicyStore struct {
 	store.AccessControlPolicyStore
 	Root *TimerLayer
@@ -353,6 +363,11 @@ type TimerLayerFileInfoStore struct {
 
 type TimerLayerGroupStore struct {
 	store.GroupStore
+	Root *TimerLayer
+}
+
+type TimerLayerInviteStore struct {
+	store.InviteStore
 	Root *TimerLayer
 }
 
@@ -528,6 +543,11 @@ type TimerLayerUserTermsOfServiceStore struct {
 
 type TimerLayerWebhookStore struct {
 	store.WebhookStore
+	Root *TimerLayer
+}
+
+type TimerLayerWhitelistStore struct {
+	store.WhitelistStore
 	Root *TimerLayer
 }
 
@@ -5027,6 +5047,54 @@ func (s *TimerLayerGroupStore) UpsertMembers(groupID string, userIDs []string) (
 			success = "true"
 		}
 		s.Root.Metrics.ObserveStoreMethodDuration("GroupStore.UpsertMembers", success, elapsed)
+	}
+	return result, err
+}
+
+func (s *TimerLayerInviteStore) Add(inviteItem *model.InviteItem) error {
+	start := time.Now()
+
+	err := s.InviteStore.Add(inviteItem)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("InviteStore.Add", success, elapsed)
+	}
+	return err
+}
+
+func (s *TimerLayerInviteStore) Delete(inviteId string) error {
+	start := time.Now()
+
+	err := s.InviteStore.Delete(inviteId)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("InviteStore.Delete", success, elapsed)
+	}
+	return err
+}
+
+func (s *TimerLayerInviteStore) GetTeamId(inviteId string) (string, error) {
+	start := time.Now()
+
+	result, err := s.InviteStore.GetTeamId(inviteId)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("InviteStore.GetTeamId", success, elapsed)
 	}
 	return result, err
 }
@@ -13228,6 +13296,54 @@ func (s *TimerLayerWebhookStore) UpdateOutgoing(hook *model.OutgoingWebhook) (*m
 	return result, err
 }
 
+func (s *TimerLayerWhitelistStore) Add(whitelistItem *model.WhitelistItem) error {
+	start := time.Now()
+
+	err := s.WhitelistStore.Add(whitelistItem)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("WhitelistStore.Add", success, elapsed)
+	}
+	return err
+}
+
+func (s *TimerLayerWhitelistStore) Delete(whitelistItem *model.WhitelistItem) error {
+	start := time.Now()
+
+	err := s.WhitelistStore.Delete(whitelistItem)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("WhitelistStore.Delete", success, elapsed)
+	}
+	return err
+}
+
+func (s *TimerLayerWhitelistStore) GetByUserId(userId string) ([]string, error) {
+	start := time.Now()
+
+	result, err := s.WhitelistStore.GetByUserId(userId)
+
+	elapsed := float64(time.Since(start)) / float64(time.Second)
+	if s.Root.Metrics != nil {
+		success := "false"
+		if err == nil {
+			success = "true"
+		}
+		s.Root.Metrics.ObserveStoreMethodDuration("WhitelistStore.GetByUserId", success, elapsed)
+	}
+	return result, err
+}
+
 func (s *TimerLayer) Close() {
 	s.Store.Close()
 }
@@ -13286,6 +13402,7 @@ func New(childStore store.Store, metrics einterfaces.MetricsInterface) *TimerLay
 	newStore.EmojiStore = &TimerLayerEmojiStore{EmojiStore: childStore.Emoji(), Root: &newStore}
 	newStore.FileInfoStore = &TimerLayerFileInfoStore{FileInfoStore: childStore.FileInfo(), Root: &newStore}
 	newStore.GroupStore = &TimerLayerGroupStore{GroupStore: childStore.Group(), Root: &newStore}
+	newStore.InviteStore = &TimerLayerInviteStore{InviteStore: childStore.Invite(), Root: &newStore}
 	newStore.JobStore = &TimerLayerJobStore{JobStore: childStore.Job(), Root: &newStore}
 	newStore.LicenseStore = &TimerLayerLicenseStore{LicenseStore: childStore.License(), Root: &newStore}
 	newStore.LinkMetadataStore = &TimerLayerLinkMetadataStore{LinkMetadataStore: childStore.LinkMetadata(), Root: &newStore}
@@ -13321,5 +13438,6 @@ func New(childStore store.Store, metrics einterfaces.MetricsInterface) *TimerLay
 	newStore.UserAccessTokenStore = &TimerLayerUserAccessTokenStore{UserAccessTokenStore: childStore.UserAccessToken(), Root: &newStore}
 	newStore.UserTermsOfServiceStore = &TimerLayerUserTermsOfServiceStore{UserTermsOfServiceStore: childStore.UserTermsOfService(), Root: &newStore}
 	newStore.WebhookStore = &TimerLayerWebhookStore{WebhookStore: childStore.Webhook(), Root: &newStore}
+	newStore.WhitelistStore = &TimerLayerWhitelistStore{WhitelistStore: childStore.Whitelist(), Root: &newStore}
 	return &newStore
 }

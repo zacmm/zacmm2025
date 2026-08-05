@@ -1,10 +1,10 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-// type
-export type {Props as GenericModalProps} from './generic_modal/generic_modal';
-export type {CircleSkeletonLoaderProps, RectangleSkeletonLoaderProps} from './skeleton_loader';
-export type {Props as PunchOutCoordsHeightAndWidth} from './common/hooks/useMeasurePunchouts';
+// types - 改為使用 export {type ...} 語法以支援 Rollup
+export {type Props as GenericModalProps} from './generic_modal/generic_modal';
+export {type CircleSkeletonLoaderProps, type RectangleSkeletonLoaderProps} from './skeleton_loader';
+export {type Props as PunchOutCoordsHeightAndWidth} from './common/hooks/useMeasurePunchouts';
 
 // components
 export {GenericModal} from './generic_modal/generic_modal';

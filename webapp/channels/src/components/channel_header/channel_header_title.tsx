@@ -26,13 +26,11 @@ import ChannelHeaderMenu from '../channel_header_menu/channel_header_menu';
 type Props = {
     dmUser?: UserProfile;
     gmMembers?: UserProfile[];
-    remoteNames?: string[];
 }
 
 const ChannelHeaderTitle = ({
     dmUser,
     gmMembers,
-    remoteNames,
 }: Props) => {
     const channel = useSelector(getCurrentChannel);
 
@@ -55,7 +53,6 @@ const ChannelHeaderTitle = ({
             <SharedChannelIndicator
                 className='shared-channel-icon'
                 withTooltip={true}
-                remoteNames={remoteNames}
             />
         );
     }

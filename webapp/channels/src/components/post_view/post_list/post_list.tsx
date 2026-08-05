@@ -136,6 +136,11 @@ export interface Props {
     toggleShouldStartFromBottomWhenUnread: () => void;
     shouldStartFromBottomWhenUnread: boolean;
     hasInaccessiblePosts: boolean;
+    
+    /*
+     * Used for filtering messages by content
+     */
+    messageFilter?: string;
 
     actions: {
 
@@ -397,6 +402,7 @@ export default class PostList extends React.PureComponent<Props, State> {
                             latestPostTimeStamp={this.props.latestPostTimeStamp}
                             isMobileView={this.props.isMobileView}
                             lastViewedAt={this.props.lastViewedAt}
+                            messageFilter={this.props.messageFilter}
                         />
                     </div>
                 </div>

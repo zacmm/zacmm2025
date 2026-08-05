@@ -215,3 +215,8 @@ func (s *Store) AssertExpectations(t mock.TestingT) bool {
 		&s.AttributesStore,
 	)
 }
+
+// Add mock implementations for the new methods
+func (s *Store) PostStoreRemovePostsBetween(options *model.RemovePostsBetweenOptions) ([]*model.Post, error) {
+	return []*model.Post{}, nil
+}

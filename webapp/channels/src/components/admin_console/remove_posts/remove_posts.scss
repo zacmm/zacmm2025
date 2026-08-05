@@ -1,0 +1,28 @@
+.date-selector {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 16px 0;
+    
+    label {
+        font-weight: 600;
+        color: var(--center-channel-color);
+    }
+    
+    input[type="datetime-local"] {
+        padding: 8px 12px;
+        border: 1px solid var(--center-channel-color-20);
+        border-radius: 4px;
+        background-color: var(--center-channel-bg);
+        color: var(--center-channel-color);
+        
+        &:focus {
+            border-color: var(--button-bg);
+            outline: none;
+        }
+    }
+    
+    button {
+        margin-left: 8px;
+    }
+} 

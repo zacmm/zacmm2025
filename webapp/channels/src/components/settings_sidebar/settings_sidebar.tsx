@@ -3,6 +3,7 @@
 
 import classNames from 'classnames';
 import React from 'react';
+import type {RefObject} from 'react';
 import {FormattedMessage} from 'react-intl';
 
 import Constants from 'utils/constants';
@@ -26,12 +27,42 @@ export type Props = {
 };
 
 export default class SettingsSidebar extends React.PureComponent<Props> {
-    buttonRefs: Map<string, HTMLButtonElement>;
+    buttonRefs: Map<string, RefObject<HTMLButtonElement>>;
 
     constructor(props: Props) {
         super(props);
 
+        // Initialize an empty Map for button refs
         this.buttonRefs = new Map();
+
+        // Initialize refs for all tabs
+        this.initializeButtonRefs(props.tabs, props.pluginTabs);
+    }
+
+    // Initialize or update button refs for all tabs
+    private initializeButtonRefs(tabs: Tab[], pluginTabs?: Tab[]) {
+        // Clear existing refs if reinitializing
+        this.buttonRefs.clear();
+
+        // Create refs for all tabs, regardless of display status
+        tabs.forEach((tab) => {
+            this.buttonRefs.set(tab.name, React.createRef());
+        });
+
+        // Create refs for plugin tabs if they exist
+        if (pluginTabs?.length) {
+            pluginTabs.forEach((tab) => {
+                this.buttonRefs.set(tab.name, React.createRef());
+            });
+        }
+    }
+
+    // Update refs when props change
+    componentDidUpdate(prevProps: Props) {
+        // Check if tabs or pluginTabs have changed
+        if (prevProps.tabs !== this.props.tabs || prevProps.pluginTabs !== this.props.pluginTabs) {
+            this.initializeButtonRefs(this.props.tabs, this.props.pluginTabs);
+        }
     }
 
     // Get all visible tabs in the correct order
@@ -47,13 +78,13 @@ export default class SettingsSidebar extends React.PureComponent<Props> {
         (e.target as Element).closest('.settings-modal')?.classList.add('display--content');
     };
 
-    public handleKeyDown = (tab: Tab, e: React.KeyboardEvent) => {
+    public handleKeyUp = (tab: Tab, e: React.KeyboardEvent) => {
         // Only handle UP and DOWN arrow keys
         if (!isKeyPressed(e, Constants.KeyCodes.UP) && !isKeyPressed(e, Constants.KeyCodes.DOWN)) {
             return;
         }
 
-        // Prevent scrolling
+        // Prevent default behavior
         e.preventDefault();
 
         // Get all visible tabs
@@ -90,7 +121,7 @@ export default class SettingsSidebar extends React.PureComponent<Props> {
         this.props.updateTab(targetTab.name);
 
         // Focus the target tab button directly
-        const targetButton = this.buttonRefs.get(targetTab.name);
+        const targetButton = this.buttonRefs.get(targetTab.name)?.current;
         if (targetButton) {
             // Use direct focus instead of a11yFocus to ensure Cypress tests can detect the focus change
             targetButton.focus();
@@ -124,17 +155,11 @@ export default class SettingsSidebar extends React.PureComponent<Props> {
                 {tab.newGroup && <hr/>}
                 <button
                     data-testid={`${tab.name}-tab-button`}
-                    ref={(element: HTMLButtonElement) => {
-                        if (element) {
-                            this.buttonRefs.set(tab.name, element);
-                        } else {
-                            this.buttonRefs.delete(tab.name);
-                        }
-                    }}
+                    ref={this.buttonRefs.get(tab.name)}
                     id={`${tab.name}Button`}
                     className={classNames('cursor--pointer style--none nav-pills__tab', {active: isActive})}
                     onClick={this.handleClick.bind(null, tab)}
-                    onKeyDown={this.handleKeyDown.bind(null, tab)}
+                    onKeyUp={this.handleKeyUp.bind(null, tab)}
                     aria-label={tab.uiName.toLowerCase()}
                     role='tab'
                     aria-selected={isActive}

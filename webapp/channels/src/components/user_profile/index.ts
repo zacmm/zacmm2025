@@ -3,15 +3,11 @@
 
 import type {ConnectedProps} from 'react-redux';
 import {connect} from 'react-redux';
-import {bindActionCreators} from 'redux';
-import type {Dispatch} from 'redux';
 
 import type {Channel} from '@mattermost/types/channels';
 import type {UserProfile as UserProfileType} from '@mattermost/types/users';
 
-import {fetchRemoteClusterInfo} from 'mattermost-redux/actions/shared_channels';
 import {getTheme} from 'mattermost-redux/selectors/entities/preferences';
-import {getRemoteDisplayName} from 'mattermost-redux/selectors/entities/shared_channels';
 import {getUser, makeGetDisplayName} from 'mattermost-redux/selectors/entities/users';
 
 import type {GlobalState} from 'types/store';
@@ -35,33 +31,18 @@ function makeMapStateToProps() {
     return (state: GlobalState, ownProps: OwnProps) => {
         const user = getUser(state, ownProps.userId);
         const theme = getTheme(state);
-        let remoteNames: string[] = [];
-
-        if (user?.remote_id) {
-            const remoteDisplayName = getRemoteDisplayName(state, user.remote_id);
-            if (remoteDisplayName) {
-                remoteNames = [remoteDisplayName];
-            }
-        }
 
         return {
             displayName: getDisplayName(state, ownProps.userId, true),
             user,
             theme,
             isShared: Boolean(user && user.remote_id),
-            remoteNames,
         };
     };
 }
 
-const mapDispatchToProps = (dispatch: Dispatch) => ({
-    actions: bindActionCreators({
-        fetchRemoteClusterInfo,
-    }, dispatch),
-});
-
-const connector = connect(makeMapStateToProps, mapDispatchToProps);
+const connector = connect(makeMapStateToProps);
 
 export type PropsFromRedux = ConnectedProps<typeof connector>;
 
-export default connector(UserProfile);
+export default connect(makeMapStateToProps)(UserProfile);
