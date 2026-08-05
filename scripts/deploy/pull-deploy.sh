@@ -134,6 +134,14 @@ TAG=$(echo "${META}" | grep -m1 '"tag_name"' | cut -d'"' -f4)
 
 log "   版本：${TAG}"
 
+# 分支建置會標記為 prerelease，不會出現在 /releases/latest；
+# 只有明確 --tag 指定時才可能走到這裡，此時提醒使用者確認是刻意為之。
+if grep -q '"prerelease": *true' <<< "${META}"; then
+  SRC=$(grep -m1 '來源分支' <<< "${META}" | sed 's/.*來源分支：\\`\([^\\]*\)\\`.*/\1/')
+  log "   ⚠️  這是分支建置（prerelease）${SRC:+，來源分支：${SRC}}"
+  log "       部署未合併的版本請確認是刻意為之"
+fi
+
 # 目前執行中的版本，供比對
 CURRENT=$(cat "${APP_DIR}/.deployed-version" 2>/dev/null || echo "未知")
 log "   目前：${CURRENT}"

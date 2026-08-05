@@ -151,7 +151,19 @@ jobs:
           set -euo pipefail
           TAG="build-$(date -u +%Y%m%d-%H%M%S)-${GITHUB_SHA::7}"
 
+          # 非 main 的建置標記為 prerelease。GitHub 的 /releases/latest API 會略過
+          # prerelease，因此 pull-deploy.sh 不帶 --tag 時不會誤抓到分支版本——
+          # 要部署未合併的分支必須明確指定 --tag，符合「需要明確意圖」的原則。
+          EXTRA=()
+          if [ "${GITHUB_REF_NAME}" = "main" ]; then
+            TITLE="${TAG}"
+          else
+            EXTRA=(--prerelease)
+            TITLE="${TAG}（分支 ${GITHUB_REF_NAME}）"
+          fi
+
           {
+            echo "來源分支：\`${GITHUB_REF_NAME}\`"
             echo "來源 commit：\`${GITHUB_SHA}\`"
             echo ""
             echo "\`\`\`"
@@ -162,12 +174,21 @@ jobs:
               echo "**說明**：${NOTE}"
             fi
             echo ""
-            echo "部署方式：主機執行 \`scripts/deploy/pull-deploy.sh\`"
+            if [ "${GITHUB_REF_NAME}" = "main" ]; then
+              echo "部署方式：主機執行 \`scripts/deploy/pull-deploy.sh\`"
+            else
+              echo "⚠️ 此為分支建置（prerelease），不會被 \`pull-deploy.sh\` 自動選取。"
+              echo "如需部署：\`./scripts/deploy/pull-deploy.sh --tag ${TAG}\`"
+            fi
           } > notes.md
 
+          # --target 讓 tag 指向實際建置的 commit。省略時 gh 會把 tag 建在預設分支上，
+          # 導致 git checkout <tag> 拿到的並非這份產物對應的原始碼。
           gh release create "${TAG}" \
-            --title "${TAG}" \
+            --target "${GITHUB_SHA}" \
+            --title "${TITLE}" \
             --notes-file notes.md \
+            "${EXTRA[@]}" \
             dist/server-linux-amd64.tar.gz \
             dist/webapp-dist.tar.gz \
             dist/SHA256SUMS
