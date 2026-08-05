@@ -1,173 +1,48 @@
 #!/bin/bash
+#
+# ⛔ 此腳本已停用（2026-08-05）
+#
+# 原內容可於 git 歷史取得：git show HEAD~1:devops.sh
+#
+# 停用原因：
+#   1. 正式主機沒有 node/npm，腳本的前端編譯分支永遠不會執行。它只印一行警告
+#      就繼續往下走，最後仍回報「零停機部署完成」——前端實際上從未更新。
+#      而它建議的替代方案（dist 放進 git）也不成立，webapp/.gitignore 排除了 dist。
+#   2. 主機 4 核 / 8GB 且 swap 吃緊，在服務運行中編譯有 OOM 風險。
+#   3. 沒有健康檢查與回滾機制，只確認 process 存在就宣告成功。
+#   4. 產出的 binary 無法追溯到確切 commit。
+#
+# 改用：GitHub Actions 建置 + 主機拉取
+#
 
-echo "🚀 Mattermost 零停機部署"
-echo "====================="
-echo "⏱️  編譯階段服務將持續運行，僅在切換時短暫中斷"
-echo ""
+cat <<'EOF'
 
-# 檢查目錄
-if [ ! -d "webapp" ] || [ ! -d "server" ] || [ ! -f "README.md" ]; then
-    echo "❌ 請在專案根目錄執行"
-    exit 1
-fi
+⛔ devops.sh 已停用
 
-echo "1️⃣ 檢查翻譯檔案"
-if grep -q "工作階段已逾期或" webapp/channels/src/i18n/zh-TW.json 2>/dev/null; then
-    echo "✅ 翻譯檔案已包含最新更新"
-else
-    echo "⚠️  警告：翻譯檔案可能未更新"
-fi
+  現行部署流程：
 
-echo ""
-echo "2️⃣ 編譯前端（服務繼續運行中...）"
-if command -v npm &> /dev/null; then
-    echo "✅ 檢測到 npm，開始編譯前端..."
-    echo "⚠️  前端編譯需要大量記憶體，限制使用 2GB 避免 OOM"
+    1. 推送程式碼
+         git push origin main
+       → GitHub Actions 自動建置並發布 Release
+         （僅在異動 server/ 或 webapp/ 時觸發）
 
-    # 限制 Node.js 記憶體使用，避免 OOM 導致服務死掉
-    # --max-old-space-size=2048 限制 heap 為 2GB
-    export NODE_OPTIONS="--max-old-space-size=2048"
+    2. 在主機部署
+         cd /srv/gopath/src/github.com/zacmm/zacmm2025
+         ./scripts/deploy/pull-deploy.sh
 
-    cd webapp || { echo "❌ 無法進入 webapp 目錄"; exit 1; }
+  常用選項：
 
-    # 使用 timeout 避免編譯卡住
-    if timeout 600 npm run build 2>&1 | tail -20; then
-        echo "✅ 前端編譯成功"
-    else
-        EXITCODE=$?
-        echo "❌ 前端編譯失敗（退出碼: $EXITCODE）"
-        if [ $EXITCODE -eq 124 ]; then
-            echo "⚠️  編譯超時（超過 10 分鐘）"
-            echo "💡 建議："
-            echo "   1. 檢查記憶體是否充足（建議至少 4GB）"
-            echo "   2. 嘗試手動編譯：cd webapp && npm run build"
-        elif [ $EXITCODE -eq 137 ]; then
-            echo "⚠️  進程被 kill，可能是記憶體不足（OOM）"
-            echo "💡 建議："
-            echo "   1. 增加伺服器記憶體或 swap"
-            echo "   2. 暫時停止 Mattermost 服務再編譯"
-            echo "   3. 在本地編譯好後直接上傳 dist 資料夾"
-        fi
-        cd ..
-        exit 1
-    fi
+    ./scripts/deploy/pull-deploy.sh --dry-run    預覽將執行的步驟，不實際變更
+    ./scripts/deploy/pull-deploy.sh --tag <tag>  部署指定版本
+    ./scripts/deploy/pull-deploy.sh --rollback   回退上一版
 
-    cd ..
-    unset NODE_OPTIONS
-else
-    echo "⚠️  未檢測到 npm，跳過前端編譯（請確保 dist 資料夾已在 Git 中更新）"
-fi
+  確認線上版本：
 
-echo "3️⃣ 編譯後端（服務繼續運行中...）"
-cd server || { echo "❌ 無法進入 server 目錄"; exit 1; }
+    curl -s 'http://127.0.0.1:8065/api/v4/config/client?format=old' \
+      | tr ',' '\n' | grep BuildHash
 
-# 預先下載依賴，避免編譯時網路問題
-echo "📦 下載 Go 模組依賴..."
-timeout 300 go mod download || { echo "⚠️  依賴下載超時或失敗，繼續嘗試編譯..."; }
+  說明文件：scripts/deploy/pull-deploy.sh 檔頭註解
 
-# 使用自訂編譯命令，只編譯 mattermost binary（不編譯所有 packages）
-# 添加超時機制（10 分鐘）和詳細輸出
-echo "🔨 開始編譯 mattermost binary..."
-echo "⏱️  預計需要 3-5 分鐘，如果超過 10 分鐘將自動終止"
+EOF
 
-# 設定編譯參數
-export GOOS=linux
-export GOARCH=amd64
-export GOMAXPROCS=2  # 限制並發數，避免記憶體不足
-
-# 獲取編譯時的 LDFLAGS
-BUILD_NUMBER=${BUILD_NUMBER:-dev}
-BUILD_DATE=$(date -u)
-BUILD_HASH=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
-LDFLAGS="-X 'github.com/mattermost/mattermost/server/public/model.BuildNumber=${BUILD_NUMBER}' \
-         -X 'github.com/mattermost/mattermost/server/public/model.BuildDate=${BUILD_DATE}' \
-         -X 'github.com/mattermost/mattermost/server/public/model.BuildHash=${BUILD_HASH}'"
-
-# 編譯 mattermost binary（只編譯 cmd/mattermost，不編譯全部）
-mkdir -p bin
-if timeout 600 go build -v \
-    -o bin/mattermost \
-    -trimpath \
-    -tags 'sourceavailable production' \
-    -ldflags "${LDFLAGS}" \
-    ./cmd/mattermost 2>&1 | tee /tmp/mattermost-build.log | tail -20; then
-    echo "✅ 後端編譯成功"
-else
-    EXITCODE=$?
-    echo "❌ 後端編譯失敗（退出碼: $EXITCODE）"
-    if [ $EXITCODE -eq 124 ]; then
-        echo "⚠️  編譯超時（超過 10 分鐘）"
-        echo "💡 建議："
-        echo "   1. 檢查網路連線是否穩定"
-        echo "   2. 檢查記憶體是否充足（建議至少 4GB）"
-        echo "   3. 清除編譯快取：cd server && go clean -cache"
-        echo "   4. 查看完整日誌：cat /tmp/mattermost-build.log"
-    fi
-    cd ..
-    exit 1
-fi
-
-# 也編譯 mmctl 工具
-echo "🔨 編譯 mmctl..."
-if timeout 120 go build -v \
-    -o bin/mmctl \
-    -trimpath \
-    ./cmd/mmctl 2>&1 | tail -5; then
-    echo "✅ mmctl 編譯成功"
-else
-    echo "⚠️  mmctl 編譯失敗（非致命錯誤，繼續）"
-fi
-
-cd ..
-echo "✅ 編譯完成！準備切換到新版本..."
-
-echo ""
-echo "4️⃣ 快速重啟服務（預計停機時間 < 10 秒）"
-echo "⏱️  停止舊版本..."
-sudo systemctl stop mattermost 2>/dev/null || echo "systemctl 停止失敗或未使用"
-sleep 1
-# 強制終止所有殘留的 mattermost 進程
-sudo pkill -9 -f "bin/mattermost" 2>/dev/null || echo "無殘留進程"
-sleep 1
-# 確認進程已完全停止
-if ps aux | grep -v grep | grep mattermost > /dev/null; then
-    echo "⚠️  警告：仍有 mattermost 進程運行，強制終止中..."
-    sudo killall -9 mattermost 2>/dev/null
-    sleep 1
-fi
-echo "✅ 舊版本已停止"
-
-echo "⏱️  啟動新版本..."
-sudo chown -R mattermost:mattermost . 2>/dev/null || true
-if sudo systemctl start mattermost 2>/dev/null; then
-    echo "使用 systemd 啟動"
-else
-    echo "使用直接啟動"
-    cd server
-    sudo -u mattermost ./bin/mattermost -c config/config.json > /dev/null 2>&1 &
-    cd ..
-fi
-
-echo "⏱️  等待服務啟動..."
-sleep 5
-
-echo ""
-echo "5️⃣ 驗證部署"
-if ps aux | grep -v grep | grep mattermost > /dev/null; then
-    echo "✅ 服務已成功啟動"
-    netstat -tlnp | grep :8065 2>/dev/null || ss -tlnp | grep :8065 2>/dev/null
-else
-    echo "❌ 啟動失敗，請檢查日誌"
-    echo "日誌查看: sudo journalctl -u mattermost -n 50"
-    exit 1
-fi
-
-# 計算停機時間（從停止到啟動約 10 秒）
-echo ""
-echo "🎉 零停機部署完成！"
-echo "📊 停機時間: < 10 秒"
-echo "🌐 訪問: https://newchat.bbnamg.com"
-echo "管理指令："
-echo "  停止: sudo systemctl stop mattermost (或 sudo pkill -f mattermost)"
-echo "  狀態: sudo systemctl status mattermost"
-echo "  日誌: sudo journalctl -u mattermost -f"
+exit 1

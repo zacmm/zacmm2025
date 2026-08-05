@@ -98,44 +98,49 @@ Please see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## Production Deployment (生產環境部署)
 
-本專案包含自動化部署腳本，用於在生產環境中部署 Mattermost。
+部署採 **GitHub Actions 建置 + 主機拉取（pull-based）**，正式主機不編譯任何東西。
 
-### 🚀 首次部署
+> ⚠️ `devops.sh` 與 `devops_backend_only.sh` 已於 2026-08-05 停用，執行會直接中止。
+
+### 🔄 日常部署
 
 ```bash
-# 1. 更新代碼
-git pull origin main
+# === 本機 ===
+git push origin main
+#   → 異動 server/ 或 webapp/ 時，GitHub Actions 自動建置並發布 Release
+#   → 也可在 Actions 頁面手動觸發 "Deploy Build"
 
-# 2. 設定系統服務（只需執行一次）
+# === 主機 ===
+cd /srv/gopath/src/github.com/zacmm/zacmm2025
+./scripts/deploy/pull-deploy.sh
+```
+
+部署為人工執行，CI 不會自動上線。停機時間約 4 秒。
+
+常用選項：
+
+```bash
+./scripts/deploy/pull-deploy.sh --dry-run     # 預覽步驟，不實際變更
+./scripts/deploy/pull-deploy.sh --tag <tag>   # 部署指定版本
+./scripts/deploy/pull-deploy.sh --rollback    # 回退上一版
+```
+
+### 🚀 首次設定（僅需一次）
+
+```bash
+# 建立 systemd 服務
 chmod +x setup_service.sh
 ./setup_service.sh
-
-# 3. 編譯並啟動服務
-chmod +x devops.sh
-./devops.sh
 ```
 
-### 🔄 日常更新部署
-
-**注意**：前端需要在本地編譯後推送到遠端，因為遠端伺服器沒有安裝 Node.js/npm。
+### 🔍 確認線上執行的版本
 
 ```bash
-# === 在本地執行 ===
-# 1. 編譯前端（生產版本）
-cd webapp && npm run build && cd ..
-
-# 2. 提交並推送代碼
-git add .
-git commit -m "update: 更新前端編譯產物"
-git push origin main
-
-# === 在遠端伺服器執行 ===
-# 3. 更新代碼
-git pull origin main
-
-# 4. 重新編譯並部署（會編譯後端並重啟服務）
-./devops.sh
+curl -s 'http://127.0.0.1:8065/api/v4/config/client?format=old' \
+  | tr ',' '\n' | grep -E 'BuildHash|BuildNumber'
 ```
+
+`BuildHash` 是 CI 注入的 commit SHA，可直接對應原始碼版本。
 
 ### 📊 服務管理指令
 
@@ -177,12 +182,19 @@ cd server && ./bin/mattermost -c config/config.json
 
 ### 📝 腳本說明
 
-- **`devops.sh`** - 生產部署腳本，執行步驟：
-  1. 停止現有服務
-  2. 編譯前端 (webpack 生產版本)
-  3. 編譯後端 (Linux 二進制檔案)
-  4. 啟動服務 (優先使用 systemd)
-  5. 驗證部署狀態
+- **`.github/workflows/deploy-build.yml`** - CI 建置：
+  1. 前後端並行編譯（Go 版本取自 `server/go.mod`）
+  2. 打包並產生 SHA256 校驗碼
+  3. 發布為 GitHub Release
+
+- **`scripts/deploy/pull-deploy.sh`** - 主機端部署：
+  1. 查詢並下載 Release 產物
+  2. 驗證 SHA256、解壓
+  3. 停止服務，以 `mv` 原子切換 binary 與 dist
+  4. 啟動服務，健康檢查三項狀態
+  5. 失敗自動回滾（舊版保留為 `.prev`）
+
+- **`devops.sh`** / **`devops_backend_only.sh`** - ⛔ 已停用，執行會中止並提示新流程
 
 - **`setup_service.sh`** - 系統服務設定腳本：
   - 建立 systemd 服務檔案
