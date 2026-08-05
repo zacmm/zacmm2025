@@ -345,7 +345,7 @@ CREATE TABLE IF NOT EXISTS db_migrations (
 
 -- Modify ChannelMembers table
 ALTER TABLE ChannelMembers 
-ADD COLUMN IF NOT EXISTS NotifyProps json AFTER NotifyProps,
+ADD COLUMN IF NOT EXISTS NotifyProps json,
 ADD COLUMN IF NOT EXISTS MentionCountRoot bigint AFTER SchemeGuest,
 ADD COLUMN IF NOT EXISTS MsgCountRoot bigint AFTER MentionCountRoot,
 ADD COLUMN IF NOT EXISTS UrgentMentionCount bigint AFTER MsgCountRoot;
