@@ -1,0 +1,156 @@
+name: Deploy Build
+
+# 建置正式環境用的產物，發布成 GitHub Release 供主機拉取。
+# 採 pull-based：CI 不連進主機，主機主動下載，因此不需開放任何 inbound port。
+#
+# 手動觸發：Actions 頁面 → Deploy Build → Run workflow
+# 主機部署：ssh mattermost_v1 → scripts/deploy/pull-deploy.sh
+
+on:
+  workflow_dispatch:
+    inputs:
+      note:
+        description: '本次建置的說明（會顯示在 Release 內容中）'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: deploy-build
+  cancel-in-progress: false
+
+jobs:
+  build-server:
+    name: 編譯後端
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+
+      - name: 編譯 mattermost 與 mmctl
+        working-directory: server
+        env:
+          GOOS: linux
+          GOARCH: amd64
+          CGO_ENABLED: 0
+        run: |
+          set -euo pipefail
+          mkdir -p bin
+          LDFLAGS="-X 'github.com/mattermost/mattermost/server/public/model.BuildNumber=${GITHUB_RUN_NUMBER}'"
+          LDFLAGS="${LDFLAGS} -X 'github.com/mattermost/mattermost/server/public/model.BuildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)'"
+          LDFLAGS="${LDFLAGS} -X 'github.com/mattermost/mattermost/server/public/model.BuildHash=${GITHUB_SHA}'"
+
+          go build -v -trimpath \
+            -tags 'sourceavailable production' \
+            -ldflags "${LDFLAGS}" \
+            -o bin/mattermost ./cmd/mattermost
+
+          go build -v -trimpath -o bin/mmctl ./cmd/mmctl
+
+      - name: 打包
+        working-directory: server
+        run: tar czf ../server-linux-amd64.tar.gz -C bin mattermost mmctl
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: server-build
+          path: server-linux-amd64.tar.gz
+          retention-days: 1
+
+  build-webapp:
+    name: 編譯前端
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: npm
+          cache-dependency-path: webapp/package-lock.json
+
+      # webapp 是 npm workspaces，必須在根目錄安裝才會建立 workspace 間的連結
+      - name: 安裝相依套件
+        working-directory: webapp
+        run: npm ci
+
+      - name: 編譯
+        working-directory: webapp
+        env:
+          NODE_ENV: production
+        run: npm run build
+
+      - name: 確認產物存在
+        run: |
+          test -f webapp/channels/dist/root.html || { echo "❌ 建置產物不完整，找不到 root.html"; exit 1; }
+          echo "產物大小：$(du -sh webapp/channels/dist | cut -f1)　檔案數：$(find webapp/channels/dist -type f | wc -l)"
+
+      - name: 打包
+        run: tar czf webapp-dist.tar.gz -C webapp/channels dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: webapp-build
+          path: webapp-dist.tar.gz
+          retention-days: 1
+
+  release:
+    name: 發布 Release
+    needs: [build-server, build-webapp]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: dist
+
+      - name: 產生校驗碼
+        working-directory: dist
+        run: |
+          sha256sum server-linux-amd64.tar.gz webapp-dist.tar.gz > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: 建立 Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NOTE: ${{ inputs.note }}
+        run: |
+          set -euo pipefail
+          TAG="build-$(date -u +%Y%m%d-%H%M%S)-${GITHUB_SHA::7}"
+
+          {
+            echo "來源 commit：\`${GITHUB_SHA}\`"
+            echo ""
+            echo "\`\`\`"
+            git log -1 --format='%h %ci%n%s' "${GITHUB_SHA}"
+            echo "\`\`\`"
+            if [ -n "${NOTE}" ]; then
+              echo ""
+              echo "**說明**：${NOTE}"
+            fi
+            echo ""
+            echo "部署方式：主機執行 \`scripts/deploy/pull-deploy.sh\`"
+          } > notes.md
+
+          gh release create "${TAG}" \
+            --title "${TAG}" \
+            --notes-file notes.md \
+            dist/server-linux-amd64.tar.gz \
+            dist/webapp-dist.tar.gz \
+            dist/SHA256SUMS
+
+          echo "✅ 已發布 ${TAG}"
