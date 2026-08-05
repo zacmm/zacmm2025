@@ -35,6 +35,16 @@ jobs:
           go-version-file: server/go.mod
           cache-dependency-path: server/go.sum
 
+      # server/go.work 被 gitignore，CI checkout 後不存在。
+      # 而 server/go.mod 依賴的是已發布的 server/public v0.1.12，沒有 replace 指向本地，
+      # 缺少 workspace 就會從 module proxy 抓到不含客製的版本，
+      # 導致 model.CELExpressionError 之類的 undefined 錯誤。
+      - name: 建立 go workspace
+        working-directory: server
+        run: |
+          go work init . ./public
+          go work edit -print
+
       - name: 編譯 mattermost 與 mmctl
         working-directory: server
         env:
