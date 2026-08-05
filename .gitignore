@@ -131,8 +131,8 @@ webapp/data/*
 webapp/.npm-cache/*
 
 # Claude AI files
+# 註：CLAUDE.md 已納入版控（上游忽略它，本 fork 用它記錄專案特有的部署與架構知識）
 **/CLAUDE.local.md
-CLAUDE.md
 .claude/
 
 # Scripts containing sensitive information
@@ -173,6 +173,6 @@ docker-compose.override.yaml
 .env
 
 **/CLAUDE.local.md
-CLAUDE.md
+# CLAUDE.md 納入版控（上游忽略它，但本 fork 用它記錄專案特有的部署與架構知識）
 .cursorrules
 .claude/
