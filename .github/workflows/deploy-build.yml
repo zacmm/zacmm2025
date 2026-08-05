@@ -7,6 +7,15 @@ name: Deploy Build
 # 主機部署：ssh mattermost_v1 → scripts/deploy/pull-deploy.sh
 
 on:
+  # 推上 main 且動到實際程式碼時自動建置。
+  # 僅建置並發布 Release，不會自動部署到正式主機——
+  # 部署仍需在主機上手動執行 pull-deploy.sh，保留人工關卡。
+  push:
+    branches: [main]
+    paths:
+      - 'server/**'
+      - 'webapp/**'
+      - '.github/workflows/deploy-build.yml'
   workflow_dispatch:
     inputs:
       note:

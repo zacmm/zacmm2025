@@ -239,12 +239,10 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if h.IsStatic {
-		fmt.Println("\n\n\nSTATIC", r.URL.Path, c.AppContext.Session() != nil)
 		// we need to check if users are logged in and then whitelisted
 		if c.AppContext.Session() != nil {
 			// check if user is whitelisted
 			isWhitelisted, err := c.App.CheckUserIPWhitelisted(c.AppContext, c.AppContext.Session().UserId, userIps)
-			fmt.Println("\n\n\nIs whitelisted 111: ", isWhitelisted, "Error: ", err, "IP: ", r.Header, r.Header["X-Forwarded-For"], r.Header["X-Real-IP"])
 			if err != nil {
 				c.Logger.Error("Error checking IP whitelist", mlog.Err(err))
 				c.Err = model.NewAppError("ServeHTTP", "api.context.whitelist.check_error.app_error", nil, "", http.StatusInternalServerError)
@@ -349,16 +347,12 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		c.SessionRequired()
 	}
 
-	fmt.Println("\n\n\nChecking whitelisted 222", h.RequireSession, r.URL.Path)
 	if h.RequireSession {
 		// Skip whitelist check for certain paths (login, public endpoints, etc.)
 		shouldSkip := h.shouldSkipWhitelistCheck(r.URL.Path)
-		fmt.Println("\n\n\nShould skip: ", shouldSkip)
 		if !shouldSkip {
 			isWhitelisted, err := c.App.CheckUserIPWhitelisted(c.AppContext, c.AppContext.Session().UserId, userIps)
-			fmt.Println("\n\n\nIs whitelisted 222: ", isWhitelisted, "Error: ", err, r.URL.Path)
 			if err != nil {
-				fmt.Println("\n\n\nError checking IP whitelist")
 				c.Logger.Error("Error checking IP whitelist", mlog.Err(err))
 				c.Err = model.NewAppError("ServeHTTP", "api.context.whitelist.check_error.app_error", nil, "", http.StatusInternalServerError)
 			} else if !isWhitelisted {
@@ -371,7 +365,6 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				c.Err = model.NewAppError("ServeHTTP", "api.context.ip_whitelist_denied.app_error",
 					nil, "", http.StatusUnauthorized)
 			}
-			fmt.Println("\n\n\nAccess granted: IP whitelisted")
 		}
 	}
 
