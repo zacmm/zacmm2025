@@ -176,3 +176,6 @@ docker-compose.override.yaml
 # CLAUDE.md 納入版控（上游忽略它，但本 fork 用它記錄專案特有的部署與架構知識）
 .cursorrules
 .claude/
+
+# pull-deploy.sh 在正式主機上產生的部署狀態檔
+.deployed-version

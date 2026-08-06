@@ -6,6 +6,9 @@ node_modules
 *.tar.gz
 
 channels/dist
+# pull-deploy.sh 的回滾備份與失敗版本，僅存在於正式主機
+channels/dist.prev
+channels/dist.failed
 playbooks/dist
 boards/dist
 platform/*/dist
