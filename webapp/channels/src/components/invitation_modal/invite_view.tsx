@@ -73,6 +73,7 @@ export type Props = InviteState & {
     townSquareDisplayName: string;
     channelToInvite?: Channel;
     onPaste?: (e: ClipboardEvent) => void;
+    inviteId: string;
 }
 
 export default function InviteView(props: Props) {
@@ -88,8 +89,8 @@ export default function InviteView(props: Props) {
     const {formatMessage} = useIntl();
 
     const inviteURL = useMemo(() => {
-        return `${getSiteURL()}/signup_user_complete/?id=${props.currentTeam.invite_id}&md=link&sbr=${trackFlowRole}`;
-    }, [props.currentTeam.invite_id, trackFlowRole]);
+        return `${getSiteURL()}/signup_user_complete/?id=${props.inviteId || props.currentTeam.invite_id}&md=link&sbr=${trackFlowRole}`;
+    }, [props.inviteId, props.currentTeam.invite_id, trackFlowRole]);
 
     const copyText = useCopyText({
         trackCallback: () => trackEvent(getAnalyticsCategory(props.isAdmin), 'click_copy_invite_link', {...roleForTrackFlow, ...getSourceForTrackFlow()}),
@@ -240,7 +241,6 @@ export default function InviteView(props: Props) {
                     inviteType={props.inviteType}
                     setInviteAs={props.setInviteAs}
                     titleClass='InviteView__sectionTitle'
-                    canInviteGuests={props.canInviteGuests}
                 />
                 }
                 {(props.inviteType === InviteType.GUEST || (props.inviteType === InviteType.MEMBER && props.channelToInvite)) && (

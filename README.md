@@ -95,3 +95,119 @@ See the [LICENSE file](LICENSE.txt) for license rights and limitations.
 
 Please see [CONTRIBUTING.md](./CONTRIBUTING.md).
 [Join the Mattermost Contributors server](https://community.mattermost.com/signup_user_complete/?id=codoy5s743rq5mk18i7u5ksz7e) to join community discussions about contributions, development, and more.
+
+## Production Deployment (生產環境部署)
+
+部署採 **GitHub Actions 建置 + 主機拉取（pull-based）**，正式主機不編譯任何東西。
+
+> ⚠️ `devops.sh` 與 `devops_backend_only.sh` 已於 2026-08-05 停用，執行會直接中止。
+
+### 🔄 日常部署
+
+```bash
+# === 本機 ===
+git push origin main
+#   → 異動 server/ 或 webapp/ 時，GitHub Actions 自動建置並發布 Release
+#   → 也可在 Actions 頁面手動觸發 "Deploy Build"
+
+# === 主機 ===
+cd /srv/gopath/src/github.com/zacmm/zacmm2025
+./scripts/deploy/pull-deploy.sh
+```
+
+部署為人工執行，CI 不會自動上線。停機時間約 4 秒。
+
+常用選項：
+
+```bash
+./scripts/deploy/pull-deploy.sh --dry-run     # 預覽步驟，不實際變更
+./scripts/deploy/pull-deploy.sh --tag <tag>   # 部署指定版本
+./scripts/deploy/pull-deploy.sh --rollback    # 回退上一版
+```
+
+### 🚀 首次設定（僅需一次）
+
+```bash
+# 建立 systemd 服務
+chmod +x setup_service.sh
+./setup_service.sh
+```
+
+### 🔍 確認線上執行的版本
+
+```bash
+curl -s 'http://127.0.0.1:8065/api/v4/config/client?format=old' \
+  | tr ',' '\n' | grep -E 'BuildHash|BuildNumber'
+```
+
+`BuildHash` 是 CI 注入的 commit SHA，可直接對應原始碼版本。
+
+### 📊 服務管理指令
+
+```bash
+# 啟動服務
+sudo systemctl start mattermost
+
+# 停止服務
+sudo systemctl stop mattermost
+
+# 重啟服務
+sudo systemctl restart mattermost
+
+# 查看狀態
+sudo systemctl status mattermost
+
+# 查看即時日誌
+sudo journalctl -u mattermost -f
+
+# 查看應用程式日誌
+tail -f server/logs/mattermost.log
+```
+
+### 🔍 故障排除
+
+```bash
+# 檢查服務是否運行
+ps aux | grep mattermost
+
+# 檢查端口監聽狀態
+netstat -tlnp | grep :8065
+
+# 測試網站訪問
+curl -I https://mattermost.playplus.com.tw
+
+# 如果服務無法啟動，直接執行二進制檔案查看錯誤
+cd server && ./bin/mattermost -c config/config.json
+```
+
+### 📝 腳本說明
+
+- **`.github/workflows/deploy-build.yml`** - CI 建置：
+  1. 前後端並行編譯（Go 版本取自 `server/go.mod`）
+  2. 打包並產生 SHA256 校驗碼
+  3. 發布為 GitHub Release
+
+- **`scripts/deploy/pull-deploy.sh`** - 主機端部署：
+  1. 查詢並下載 Release 產物
+  2. 驗證 SHA256、解壓
+  3. 停止服務，以 `mv` 原子切換 binary 與 dist
+  4. 啟動服務，健康檢查三項狀態
+  5. 失敗自動回滾（舊版保留為 `.prev`）
+
+- **`devops.sh`** / **`devops_backend_only.sh`** - ⛔ 已停用，執行會中止並提示新流程
+
+- **`setup_service.sh`** - 系統服務設定腳本：
+  - 建立 systemd 服務檔案
+  - 設定開機自動啟動
+  - 只需執行一次
+
+### ⚙️ 技術細節
+
+- **服務位置**: `/etc/systemd/system/mattermost.service`
+- **二進制檔案**: `server/bin/mattermost`
+- **配置檔案**: `server/config/config.json`
+- **前端產物**: `webapp/dist/`
+- **預設端口**: 8065
+- **nginx 代理**: 需配置代理到 `127.0.0.1:8065`
+
+服務會在系統重開機後自動啟動。

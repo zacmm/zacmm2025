@@ -18,7 +18,7 @@ import * as Markdown from './markdown';
 
 const punctuationRegex = /[^\p{L}\d]/u;
 const UNICODE_EMOJI_REGEX = emojiRegex();
-const htmlEmojiPattern = /^<p>\s*(?:<img class="emoticon"[^>]*>|<span data-emoticon[^>]*>[^<]*<\/span>\s*|<span class="emoticon emoticon--unicode">[^<]*<\/span>\s*)+<\/p>$/;
+const htmlEmojiPattern = /^<p>\s*(?:<img class="emoticon"[^>]*>\s*|<span data-emoticon[^>]*>.*?<\/span>\s*|<span class="emoticon emoticon--unicode">.*?<\/span>\s*)+<\/p>$/;
 
 const FORMAT_TOKEN_LIMIT = 1000;
 const FORMAT_TOKEN_LIMIT_ERROR = 'maximum number of tokens reached';

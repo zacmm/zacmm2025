@@ -39,6 +39,7 @@ type RetryLayer struct {
 	EmojiStore                      store.EmojiStore
 	FileInfoStore                   store.FileInfoStore
 	GroupStore                      store.GroupStore
+	InviteStore                     store.InviteStore
 	JobStore                        store.JobStore
 	LicenseStore                    store.LicenseStore
 	LinkMetadataStore               store.LinkMetadataStore
@@ -74,6 +75,7 @@ type RetryLayer struct {
 	UserAccessTokenStore            store.UserAccessTokenStore
 	UserTermsOfServiceStore         store.UserTermsOfServiceStore
 	WebhookStore                    store.WebhookStore
+	WhitelistStore                  store.WhitelistStore
 }
 
 func (s *RetryLayer) AccessControlPolicy() store.AccessControlPolicyStore {
@@ -138,6 +140,10 @@ func (s *RetryLayer) FileInfo() store.FileInfoStore {
 
 func (s *RetryLayer) Group() store.GroupStore {
 	return s.GroupStore
+}
+
+func (s *RetryLayer) Invite() store.InviteStore {
+	return s.InviteStore
 }
 
 func (s *RetryLayer) Job() store.JobStore {
@@ -280,6 +286,10 @@ func (s *RetryLayer) Webhook() store.WebhookStore {
 	return s.WebhookStore
 }
 
+func (s *RetryLayer) Whitelist() store.WhitelistStore {
+	return s.WhitelistStore
+}
+
 type RetryLayerAccessControlPolicyStore struct {
 	store.AccessControlPolicyStore
 	Root *RetryLayer
@@ -357,6 +367,11 @@ type RetryLayerFileInfoStore struct {
 
 type RetryLayerGroupStore struct {
 	store.GroupStore
+	Root *RetryLayer
+}
+
+type RetryLayerInviteStore struct {
+	store.InviteStore
 	Root *RetryLayer
 }
 
@@ -532,6 +547,11 @@ type RetryLayerUserTermsOfServiceStore struct {
 
 type RetryLayerWebhookStore struct {
 	store.WebhookStore
+	Root *RetryLayer
+}
+
+type RetryLayerWhitelistStore struct {
+	store.WhitelistStore
 	Root *RetryLayer
 }
 
@@ -6262,6 +6282,69 @@ func (s *RetryLayerGroupStore) UpsertMembers(groupID string, userIDs []string) (
 	tries := 0
 	for {
 		result, err := s.GroupStore.UpsertMembers(groupID, userIDs)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerInviteStore) Add(inviteItem *model.InviteItem) error {
+
+	tries := 0
+	for {
+		err := s.InviteStore.Add(inviteItem)
+		if err == nil {
+			return nil
+		}
+		if !isRepeatableError(err) {
+			return err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerInviteStore) Delete(inviteId string) error {
+
+	tries := 0
+	for {
+		err := s.InviteStore.Delete(inviteId)
+		if err == nil {
+			return nil
+		}
+		if !isRepeatableError(err) {
+			return err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerInviteStore) GetTeamId(inviteId string) (string, error) {
+
+	tries := 0
+	for {
+		result, err := s.InviteStore.GetTeamId(inviteId)
 		if err == nil {
 			return result, nil
 		}
@@ -16796,6 +16879,69 @@ func (s *RetryLayerWebhookStore) UpdateOutgoing(hook *model.OutgoingWebhook) (*m
 
 }
 
+func (s *RetryLayerWhitelistStore) Add(whitelistItem *model.WhitelistItem) error {
+
+	tries := 0
+	for {
+		err := s.WhitelistStore.Add(whitelistItem)
+		if err == nil {
+			return nil
+		}
+		if !isRepeatableError(err) {
+			return err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerWhitelistStore) Delete(whitelistItem *model.WhitelistItem) error {
+
+	tries := 0
+	for {
+		err := s.WhitelistStore.Delete(whitelistItem)
+		if err == nil {
+			return nil
+		}
+		if !isRepeatableError(err) {
+			return err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
+func (s *RetryLayerWhitelistStore) GetByUserId(userId string) ([]string, error) {
+
+	tries := 0
+	for {
+		result, err := s.WhitelistStore.GetByUserId(userId)
+		if err == nil {
+			return result, nil
+		}
+		if !isRepeatableError(err) {
+			return result, err
+		}
+		tries++
+		if tries >= 3 {
+			err = errors.Wrap(err, "giving up after 3 consecutive repeatable transaction failures")
+			return result, err
+		}
+		timepkg.Sleep(100 * timepkg.Millisecond)
+	}
+
+}
+
 func (s *RetryLayer) Close() {
 	s.Store.Close()
 }
@@ -16853,6 +16999,7 @@ func New(childStore store.Store) *RetryLayer {
 	newStore.EmojiStore = &RetryLayerEmojiStore{EmojiStore: childStore.Emoji(), Root: &newStore}
 	newStore.FileInfoStore = &RetryLayerFileInfoStore{FileInfoStore: childStore.FileInfo(), Root: &newStore}
 	newStore.GroupStore = &RetryLayerGroupStore{GroupStore: childStore.Group(), Root: &newStore}
+	newStore.InviteStore = &RetryLayerInviteStore{InviteStore: childStore.Invite(), Root: &newStore}
 	newStore.JobStore = &RetryLayerJobStore{JobStore: childStore.Job(), Root: &newStore}
 	newStore.LicenseStore = &RetryLayerLicenseStore{LicenseStore: childStore.License(), Root: &newStore}
 	newStore.LinkMetadataStore = &RetryLayerLinkMetadataStore{LinkMetadataStore: childStore.LinkMetadata(), Root: &newStore}
@@ -16888,5 +17035,6 @@ func New(childStore store.Store) *RetryLayer {
 	newStore.UserAccessTokenStore = &RetryLayerUserAccessTokenStore{UserAccessTokenStore: childStore.UserAccessToken(), Root: &newStore}
 	newStore.UserTermsOfServiceStore = &RetryLayerUserTermsOfServiceStore{UserTermsOfServiceStore: childStore.UserTermsOfService(), Root: &newStore}
 	newStore.WebhookStore = &RetryLayerWebhookStore{WebhookStore: childStore.Webhook(), Root: &newStore}
+	newStore.WhitelistStore = &RetryLayerWhitelistStore{WhitelistStore: childStore.Whitelist(), Root: &newStore}
 	return &newStore
 }

@@ -47,6 +47,7 @@ export type Props = {
     actions: {
         searchChannels: (teamId: string, term: string) => Promise<ActionResult<Channel[]>>;
         regenerateTeamInviteId: (teamId: string) => void;
+        getInviteId: (teamId: string) => Promise<ActionResult<{invite_id: string; team_id: string}>>;
 
         searchProfiles: (term: string, options?: Record<string, string>) => Promise<ActionResult<UserProfile[]>>;
         sendGuestsInvites: (
@@ -99,6 +100,7 @@ type State = {
     result: ResultState;
     termWithoutResults: string | null;
     show: boolean;
+    inviteId: string;
 };
 
 export default class InvitationModal extends React.PureComponent<Props, State> {
@@ -108,6 +110,7 @@ export default class InvitationModal extends React.PureComponent<Props, State> {
         invite: initializeInviteState(this.props.initialValue || '', this.props.inviteAsGuest),
         result: defaultResultState,
         show: true,
+        inviteId: '',
     });
     constructor(props: Props) {
         super(props);
@@ -126,6 +129,26 @@ export default class InvitationModal extends React.PureComponent<Props, State> {
             },
         };
     }
+
+    componentDidMount() {
+        this.getInviteId();
+    }
+
+    getInviteId = async () => {
+        if (this.props.currentTeam) {
+            try {
+                const result = await this.props.actions.getInviteId(this.props.currentTeam.id);
+                if (result.data) {
+                    this.setState({inviteId: result.data.invite_id});
+                }
+            } catch (error) {
+                // If getInviteId fails, fall back to using the team's invite_id
+                if (this.props.currentTeam?.invite_id) {
+                    this.setState({inviteId: this.props.currentTeam.invite_id});
+                }
+            }
+        }
+    };
 
     handleHide = () => {
         this.setState({show: false});
@@ -262,39 +285,15 @@ export default class InvitationModal extends React.PureComponent<Props, State> {
 
     debouncedSearchChannels = debounce((term) => this.props.currentTeam && this.props.actions.searchChannels(this.props.currentTeam.id, term), 150);
 
-    // Filter channels based on the current invite type and search term
-    filterChannels = (channels: Channel[], isGuestInvite: boolean, searchTerm: string = '') => {
-        return channels.filter((channel) => {
-            // For guest invites, filter out policy_enforced channels
-            if (isGuestInvite && channel.policy_enforced) {
-                return false;
-            }
-
-            // If there's a search term, filter by name match
-            if (searchTerm) {
-                const lowerSearchTerm = searchTerm.toLowerCase();
-                return channel.display_name.toLowerCase().includes(lowerSearchTerm) ||
-                       channel.name.toLowerCase().includes(lowerSearchTerm);
-            }
-
-            return true;
-        });
-    };
-
     channelsLoader = async (value: string) => {
-        const isGuestInvite = this.state.invite.inviteType === InviteType.GUEST;
-
-        // If there's a search term, search the channels from the server
-        if (value) {
-            this.debouncedSearchChannels(value);
+        if (!value) {
+            return this.props.invitableChannels;
         }
 
-        // Apply filtering to the channels
-        return this.filterChannels(
-            this.props.invitableChannels,
-            isGuestInvite,
-            value,
-        );
+        this.debouncedSearchChannels(value);
+        return this.props.invitableChannels.filter((channel) => {
+            return channel.display_name.toLowerCase().startsWith(value.toLowerCase()) || channel.name.toLowerCase().startsWith(value.toLowerCase());
+        });
     };
 
     onChannelsChange = (channels: Channel[]) => {
@@ -424,6 +423,7 @@ export default class InvitationModal extends React.PureComponent<Props, State> {
                 footerClass='InvitationModal__footer'
                 onClose={this.handleHide}
                 channelToInvite={this.props.channelToInvite}
+                inviteId={this.state.inviteId}
                 {...this.state.invite}
             />
         );

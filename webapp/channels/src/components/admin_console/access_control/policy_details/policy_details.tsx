@@ -282,31 +282,38 @@ function PolicyDetails({
         }
     };
 
-    const addToNewChannels = (channels: ChannelWithTeamData[]) => {
+    const handleChannelChanges = (channels: ChannelWithTeamData[], isAdding: boolean) => {
         setChannelChanges((prev) => {
             const newChanges = cloneDeep(prev);
-            channels.forEach((channel: ChannelWithTeamData) => {
-                if (newChanges.removed[channel.id]?.id === channel.id) {
-                    delete newChanges.removed[channel.id];
-                    newChanges.removedCount--;
-                } else {
-                    newChanges.added[channel.id] = channel;
+
+            channels.forEach((channel) => {
+                if (isAdding) {
+                    if (newChanges.removed[channel.id]) {
+                        delete newChanges.removed[channel.id];
+                        newChanges.removedCount--;
+                    } else {
+                        newChanges.added[channel.id] = channel;
+                    }
+                } else if (newChanges.added[channel.id]) {
+                    delete newChanges.added[channel.id];
+                } else if (!newChanges.removed[channel.id]) {
+                    newChanges.removedCount++;
+                    newChanges.removed[channel.id] = channel;
                 }
             });
+
             return newChanges;
         });
         setSaveNeeded(true);
         actions.setNavigationBlocked(true);
     };
 
-    const addToRemovedChannels = (channel: ChannelWithTeamData) => {
+    const handleUndoRemove = (channel: ChannelWithTeamData) => {
         setChannelChanges((prev) => {
             const newChanges = cloneDeep(prev);
-            if (newChanges.added[channel.id]?.id === channel.id) {
-                delete newChanges.added[channel.id];
-            } else if (newChanges.removed[channel.id]?.id !== channel.id) {
-                newChanges.removedCount++;
-                newChanges.removed[channel.id] = channel;
+            if (newChanges.removed[channel.id]) {
+                delete newChanges.removed[channel.id];
+                newChanges.removedCount--;
             }
             return newChanges;
         });
@@ -522,7 +529,8 @@ function PolicyDetails({
                         </Card.Header>
                         <Card.Body expanded={true}>
                             <ChannelList
-                                onRemoveCallback={(channel) => addToRemovedChannels(channel)}
+                                onRemoveCallback={(channel) => handleChannelChanges([channel], false)}
+                                onUndoRemoveCallback={handleUndoRemove}
                                 channelsToRemove={channelChanges.removed}
                                 channelsToAdd={channelChanges.added}
                                 policyId={policyId}
@@ -578,7 +586,7 @@ function PolicyDetails({
             {addChannelOpen && (
                 <ChannelSelectorModal
                     onModalDismissed={() => setAddChannelOpen(false)}
-                    onChannelsSelected={(channels) => addToNewChannels(channels)}
+                    onChannelsSelected={(channels) => handleChannelChanges(channels, true)}
                     groupID={''}
                     alreadySelected={Object.values(channelChanges.added).map((channel) => channel.id)}
                     excludeAccessControlPolicyEnforced={true}

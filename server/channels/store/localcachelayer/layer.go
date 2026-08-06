@@ -124,6 +124,8 @@ type LocalCacheStore struct {
 
 	termsOfService      LocalCacheTermsOfServiceStore
 	termsOfServiceCache cache.Cache
+
+	invite LocalCacheInviteStore
 }
 
 func NewLocalCacheLayer(baseStore store.Store, metrics einterfaces.MetricsInterface, cluster einterfaces.ClusterInterface, cacheProvider cache.Provider, logger mlog.LoggerIFace) (localCacheStore LocalCacheStore, err error) {
@@ -366,6 +368,9 @@ func NewLocalCacheLayer(baseStore store.Store, metrics einterfaces.MetricsInterf
 	}
 	localCacheStore.team = LocalCacheTeamStore{TeamStore: baseStore.Team(), rootStore: &localCacheStore}
 
+	// Invite
+	localCacheStore.invite = LocalCacheInviteStore{InviteStore: baseStore.Invite(), rootStore: &localCacheStore}
+
 	if cluster != nil {
 		cluster.RegisterClusterMessageHandler(model.ClusterEventInvalidateCacheForReactions, localCacheStore.reaction.handleClusterInvalidateReaction)
 		cluster.RegisterClusterMessageHandler(model.ClusterEventInvalidateCacheForRoles, localCacheStore.role.handleClusterInvalidateRole)
@@ -436,6 +441,10 @@ func (s LocalCacheStore) User() store.UserStore {
 
 func (s LocalCacheStore) Team() store.TeamStore {
 	return s.team
+}
+
+func (s LocalCacheStore) Invite() store.InviteStore {
+	return s.invite
 }
 
 func (s LocalCacheStore) DropAllTables() {

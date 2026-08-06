@@ -398,6 +398,14 @@ const Login = ({onCustomizeHeader}: LoginProps) => {
                 });
                 break;
 
+            case Constants.IP_WHITELIST_DENIED:
+                mode = 'danger';
+                title = formatMessage({
+                    id: 'login.ip_whitelist_denied',
+                    defaultMessage: 'Your IP address is not authorized to access this system. Please contact your System Administrator.',
+                });
+                break;
+
             default:
                 break;
             }
@@ -480,6 +488,10 @@ const Login = ({onCustomizeHeader}: LoginProps) => {
                 // We can't preflight this, since in some flows it's the server that invalidates
                 // our session after we use it to complete the sign in change.
                 LocalStorageStore.setWasLoggedIn(false);
+            } else if (extraParam === Constants.IP_WHITELIST_DENIED) {
+                // If this is an IP whitelist error, don't override it with session expired
+                // The error is already set correctly from the store redirect
+                setSessionExpired(false);
             } else {
                 setSessionExpired(true);
                 DesktopApp.setSessionExpired(true);
@@ -487,9 +499,12 @@ const Login = ({onCustomizeHeader}: LoginProps) => {
                 // Although the authority remains the local sessionExpired bit on the state, set this
                 // extra field in the querystring to signal the desktop app.
                 // This is legacy support for older Desktop Apps and can be removed eventually
-                const newSearchParam = new URLSearchParams(search);
-                newSearchParam.set('extra', Constants.SESSION_EXPIRED);
-                history.replace(`${pathname}?${newSearchParam}`);
+                // Only set session expired if there isn't already a more specific error
+                if (!extraParam) {
+                    const newSearchParam = new URLSearchParams(search);
+                    newSearchParam.set('extra', Constants.SESSION_EXPIRED);
+                    history.replace(`${pathname}?${newSearchParam}`);
+                }
             }
         }
     }, []);

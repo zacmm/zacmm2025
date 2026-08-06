@@ -42,6 +42,11 @@ type Props = WrappedComponentProps & {
     unreadMentions: number;
 
     /**
+     * Number of unread messages in this channel
+     */
+    unreadMsgs: number;
+
+    /**
      * Whether or not the channel is shown as unread
      */
     isUnread: boolean;
@@ -63,7 +68,6 @@ type Props = WrappedComponentProps & {
     rhsState?: RhsState;
     rhsOpen?: boolean;
     isSharedChannel?: boolean;
-    remoteNames: string[];
 
     actions: {
         markMostRecentPostInChannelAsUnread: (channelId: string) => void;
@@ -72,7 +76,6 @@ type Props = WrappedComponentProps & {
         multiSelectChannelAdd: (channelId: string) => void;
         unsetEditingPost: () => void;
         closeRightHandSide: () => void;
-        fetchChannelRemotes: (channelId: string) => void;
     };
 };
 
@@ -97,22 +100,11 @@ export class SidebarChannelLink extends React.PureComponent<Props, State> {
 
     componentDidMount(): void {
         this.enableToolTipIfNeeded();
-
-        if (this.props.isSharedChannel && this.props.channel?.id && this.props.remoteNames.length === 0) {
-            this.props.actions.fetchChannelRemotes(this.props.channel.id);
-        }
     }
 
     componentDidUpdate(prevProps: Props): void {
         if (prevProps.label !== this.props.label) {
             this.enableToolTipIfNeeded();
-        }
-
-        if (this.props.isSharedChannel &&
-            (prevProps.channel?.id !== this.props.channel?.id || prevProps.channel?.team_id !== this.props.channel?.team_id) &&
-            this.props.remoteNames.length === 0 &&
-            this.props.channel?.id) {
-            this.props.actions.fetchChannelRemotes(this.props.channel.id);
         }
     }
 
@@ -190,6 +182,7 @@ export class SidebarChannelLink extends React.PureComponent<Props, State> {
             label,
             link,
             unreadMentions,
+            unreadMsgs,
             firstChannelName,
             showChannelsTutorialStep,
             hasUrgent,
@@ -240,7 +233,6 @@ export class SidebarChannelLink extends React.PureComponent<Props, State> {
             <SharedChannelIndicator
                 className='icon'
                 withTooltip={true}
-                remoteNames={this.props.remoteNames}
             />
         ) : null;
 
@@ -264,6 +256,7 @@ export class SidebarChannelLink extends React.PureComponent<Props, State> {
                 <ChannelPencilIcon id={channel.id}/>
                 <ChannelMentionBadge
                     unreadMentions={unreadMentions}
+                    unreadMsgs={unreadMsgs}
                     hasUrgent={hasUrgent}
                 />
                 <div
@@ -291,6 +284,7 @@ export class SidebarChannelLink extends React.PureComponent<Props, State> {
             {
                 menuOpen: this.state.isMenuOpen,
                 muted: isMuted,
+                'muted-unread': isMuted && (isUnread || unreadMentions > 0 || unreadMsgs > 0),
                 'unread-title': this.props.isUnread,
                 selected: isChannelSelected,
             },

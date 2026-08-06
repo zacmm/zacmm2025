@@ -1118,3 +1118,29 @@ func DefaultUpdatePostOptions() *UpdatePostOptions {
 		IsRestorePost: false,
 	}
 }
+
+type GetAllPostsOptions struct {
+	UserId           string `json:"userId,omitempty"`
+	Keyword          string `json:"keyword,omitempty"`
+	StartDate        int64  `json:"startDate"`
+	EndDate          int64  `json:"endDate"`
+	Page             int    `json:"page,omitempty"`
+	PerPage          int    `json:"perPage,omitempty"`
+}
+
+type RemovePostsBetweenOptions struct {
+	StartTime        int64  `json:"startTime"`
+	EndTime          int64  `json:"endTime"`
+}
+
+func GetAllPostsOptionsFromJson(data io.Reader) *GetAllPostsOptions {
+	var o GetAllPostsOptions
+	json.NewDecoder(data).Decode(&o)
+	return &o
+}
+
+func RemovePostsBetweenOptionsFromJson(data io.Reader) *RemovePostsBetweenOptions {
+	var o RemovePostsBetweenOptions
+	json.NewDecoder(data).Decode(&o)
+	return &o
+}

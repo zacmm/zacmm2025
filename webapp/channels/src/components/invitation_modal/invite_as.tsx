@@ -34,7 +34,6 @@ export type Props = {
     setInviteAs: (inviteType: InviteType) => void;
     inviteType: InviteType;
     titleClass?: string;
-    canInviteGuests?: boolean;
 }
 
 export default function InviteAs(props: Props) {
@@ -139,7 +138,7 @@ export default function InviteAs(props: Props) {
     }
 
     // disable the radio button logic (is disabled when is starter - pre and post trial)
-    if (isStarter || !props.canInviteGuests) {
+    if (isStarter) {
         guestDisabled = (id: string) => {
             return (id === InviteType.GUEST);
         };

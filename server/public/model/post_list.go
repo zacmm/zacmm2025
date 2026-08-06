@@ -226,3 +226,14 @@ func (o *PostList) BuildWranglerPostList() *WranglerPostList {
 
 	return wpl
 }
+
+type AllPosts struct {
+	List *PostList
+	TotalPages int
+	PostInfoMap *map[string]PostInfo
+}
+
+func (a *AllPosts) ToJson() string {
+	b, _ := json.Marshal(a)
+	return string(b)
+}

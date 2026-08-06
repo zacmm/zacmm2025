@@ -120,7 +120,7 @@ import type {ScheduledPost} from '@mattermost/types/schedule_post';
 import type {Scheme} from '@mattermost/types/schemes';
 import type {Session} from '@mattermost/types/sessions';
 import type {CompleteOnboardingRequest} from '@mattermost/types/setup';
-import type {RemoteClusterInfo, SharedChannelRemote} from '@mattermost/types/shared_channels';
+import type {SharedChannelRemote} from '@mattermost/types/shared_channels';
 import type {
     GetTeamMembersOpts,
     Team,
@@ -902,16 +902,8 @@ export default class Client4 {
         );
     };
 
-    getProfilesNotInChannel = (teamId: string, channelId: string, groupConstrained: boolean, page = 0, perPage = PER_PAGE_DEFAULT, cursorId = '') => {
-        const queryStringObj: any = {in_team: teamId, not_in_channel: channelId, per_page: perPage};
-
-        // If cursorId is provided, use cursor-based pagination
-        if (cursorId) {
-            queryStringObj.cursor_id = cursorId;
-        } else {
-            // Otherwise use traditional page-based pagination
-            queryStringObj.page = page;
-        }
+    getProfilesNotInChannel = (teamId: string, channelId: string, groupConstrained: boolean, page = 0, perPage = PER_PAGE_DEFAULT) => {
+        const queryStringObj: any = {in_team: teamId, not_in_channel: channelId, page, per_page: perPage};
         if (groupConstrained) {
             queryStringObj.group_constrained = true;
         }
@@ -2112,20 +2104,6 @@ export default class Client4 {
         );
     };
 
-    getSharedChannelRemoteInfos = (channelId: string) => {
-        return this.doFetch<RemoteClusterInfo[]>(
-            `${this.getBaseRoute()}/sharedchannels/${channelId}/remotes`,
-            {method: 'GET'},
-        );
-    };
-
-    getRemoteClusterInfo = (remoteId: string) => {
-        return this.doFetch<RemoteClusterInfo>(
-            `${this.getBaseRoute()}/sharedchannels/remote_info/${remoteId}`,
-            {method: 'GET'},
-        );
-    };
-
     sharedChannelRemoteInvite = (remoteId: string, channelId: string) => {
         return this.doFetch<StatusOK>(
             `${this.getRemoteClusterRoute(remoteId)}/channels/${channelId}/invite`,
@@ -2418,6 +2396,20 @@ export default class Client4 {
         return this.doFetch<Post[]>(
             `${this.getPostsRoute()}/ids`,
             {method: 'post', body: JSON.stringify(postIds)},
+        );
+    };
+
+    getAllPosts = (options: any) => {
+        return this.doFetch<any>(
+            `${this.getPostsRoute()}/all`,
+            {method: 'post', body: JSON.stringify(options)},
+        );
+    };
+
+    removePostsBetween = (options: any) => {
+        return this.doFetch<any>(
+            `${this.getPostsRoute()}/remove_between`,
+            {method: 'delete', body: JSON.stringify(options)},
         );
     };
 
@@ -3296,6 +3288,28 @@ export default class Client4 {
         return this.doFetch<StatusOK>(
             `${this.getBaseRoute()}/database/recycle`,
             {method: 'post'},
+        );
+    };
+
+    // Whitelist management methods
+    getWhitelist = (userId: string) => {
+        return this.doFetch<{user_id: string; ips: string[]}>(
+            `${this.getUserRoute(userId)}/whitelist`,
+            {method: 'get'},
+        );
+    };
+
+    addToWhitelist = (item: {userId: string; ip: string}) => {
+        return this.doFetch<StatusOK>(
+            `${this.getUserRoute(item.userId)}/whitelist`,
+            {method: 'post', body: JSON.stringify({ip: item.ip})},
+        );
+    };
+
+    deleteFromWhitelist = (item: {userId: string; ip: string}) => {
+        return this.doFetch<StatusOK>(
+            `${this.getUserRoute(item.userId)}/whitelist`,
+            {method: 'delete', body: JSON.stringify({ip: item.ip})},
         );
     };
 
@@ -4576,6 +4590,16 @@ export default class Client4 {
     getChannelAccessControlAttributes = (channelId: string) => {
         return this.doFetch<AccessControlAttributes>(
             `${this.getChannelRoute(channelId)}/access_control/attributes`,
+            {method: 'get'},
+        );
+    };
+
+    getInviteId = (teamId: string) => {
+        return this.doFetch<{
+            invite_id: string;
+            team_id: string;
+        }>(
+            `${this.getTeamRoute(teamId)}/invite`,
             {method: 'get'},
         );
     };

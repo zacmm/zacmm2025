@@ -19,10 +19,6 @@ describe('components/UserProfile', () => {
         userId: 'user_id',
         theme: Preferences.THEMES.onyx,
         isShared: false,
-        remoteNames: [],
-        actions: {
-            fetchRemoteClusterInfo: jest.fn(),
-        },
         dispatch: jest.fn(),
     };
 

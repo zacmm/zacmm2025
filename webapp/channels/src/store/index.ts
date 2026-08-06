@@ -99,6 +99,16 @@ export default function configureStore(preloadedState?: DeepPartial<GlobalState>
         });
 
         let purging = false;
+        let lastLogoutAction: any = null;
+
+        // Intercept LOGOUT_SUCCESS actions to capture the server_error_id
+        const originalDispatch = store.dispatch;
+        store.dispatch = function(action: any) {
+            if (action.type === 'LOGOUT_SUCCESS') {
+                lastLogoutAction = action;
+            }
+            return originalDispatch(action);
+        } as typeof originalDispatch;
 
         // Clean up after a logout
         store.subscribe(() => {
@@ -112,12 +122,16 @@ export default function configureStore(preloadedState?: DeepPartial<GlobalState>
                     cleanLocalStorage();
                     clearUserCookie();
 
-                    // Preserve any query string parameters on logout, including parameters
-                    // used by the application such as extra and redirect_to.
-                    window.location.href = `${basePath}${window.location.search}`;
+                    // Always add extra=expired parameter when redirecting after logout
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('extra', 'expired');
+                    const redirectUrl = `${basePath}${url.search}`;
+
+                    window.location.href = redirectUrl;
 
                     setTimeout(() => {
                         purging = false;
+                        lastLogoutAction = null;
                     }, 500);
                 });
             }

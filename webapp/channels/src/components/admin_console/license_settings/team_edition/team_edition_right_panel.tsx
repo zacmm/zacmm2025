@@ -51,67 +51,7 @@ const TeamEditionRightPanel: React.FC<TeamEditionRightPanelProps> = ({
         'And more...',
     ];
     if (upgradingPercentage !== 100) {
-        upgradeButton = (
-            <div>
-                <p>
-                    <button
-                        type='button'
-                        onClick={onHandleUpgrade}
-                        className='btn btn-primary'
-                    >
-                        <LoadingWrapper
-                            loading={upgradingPercentage > 0}
-                            text={
-                                <FormattedMessage
-                                    id='admin.license.enterprise.upgrading'
-                                    defaultMessage='Upgrading {percentage}%'
-                                    values={{percentage: upgradingPercentage}}
-                                />
-                            }
-                        >
-                            <FormattedMessage
-                                id='admin.license.enterprise.upgrade'
-                                defaultMessage='Upgrade to Enterprise Edition'
-                            />
-                        </LoadingWrapper>
-                    </button>
-                </p>
-                <p className='upgrade-legal-terms'>
-                    <FormattedMessage
-                        id='admin.licenseSettings.teamEdition.teamEditionRightPanel.acceptTermsInitial'
-                        defaultMessage='By clicking <b>Upgrade</b>, I agree to the terms of the Mattermost '
-                        values={{
-                            b: (chunks: string) => <b>{chunks}</b>,
-                        }}
-                    />
-                    <a
-                        role='button'
-                        onClick={openEEModal}
-                    >
-                        <FormattedMessage
-                            id='admin.licenseSettings.teamEdition.teamEditionRightPanel.eeLicenseLink'
-                            defaultMessage='Enterprise Edition License'
-                        />
-                    </a>
-                    <FormattedMessage
-                        id='admin.licenseSettings.teamEdition.teamEditionRightPanel.acceptTermsFinal'
-                        defaultMessage='. Upgrading will download the binary and update your team edition.'
-                    />
-                </p>
-                {upgradeError && (
-                    <div className='upgrade-error'>
-                        <div className='form-group has-error'>
-                            <div
-                                className='as-bs-label control-label'
-                                dangerouslySetInnerHTML={{
-                                    __html: format(upgradeError),
-                                }}
-                            />
-                        </div>
-                    </div>
-                )}
-            </div>
-        );
+        upgradeButton = (<></>)
     } else if (upgradingPercentage === 100) {
         upgradeButton = (
             <div>
@@ -186,7 +126,6 @@ const TeamEditionRightPanel: React.FC<TeamEditionRightPanelProps> = ({
                     );
                 })}
             </div>
-            {upgradeButton}
         </div>
     );
 };

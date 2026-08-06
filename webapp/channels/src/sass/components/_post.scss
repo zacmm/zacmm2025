@@ -1942,19 +1942,21 @@
 
         .all-emoji {
             .emoticon {
-                min-width: 32px;
-                min-height: 32px;
+                width: 63px;
+                min-width: 63px;
+                height: 63px;
+                min-height: 63px;
                 vertical-align: top;
             }
 
             .emoticon--unicode {
-                font-size: 32px;
+                font-size: 63px;
                 line-height: 1.1;
 
                 .os--windows & {
                     position: relative;
                     left: -4px;
-                    font-size: 29px;
+                    font-size: 58px;
                 }
             }
         }

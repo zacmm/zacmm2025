@@ -118,6 +118,61 @@ export async function adminResetEmail(user, success, error) {
     }
 }
 
+export async function adminAddToWhitelist(item, success, error) {
+    const data = await Client4.addToWhitelist({
+        userId: item.user_id, 
+        ip: item.ip
+    });
+    if (data && success) {
+        success();
+    } else if (error) {
+        error(data);
+    }
+}
+
+export async function adminDeleteFromWhitelist(item, success, error) {
+    const data = await Client4.deleteFromWhitelist({
+        userId: item.user_id,
+        ip: item.ip
+    });
+    if (data && success) {
+        success();
+    } else if (error) {
+        error(data);
+    }
+}
+
+export async function adminGetWhitelist(userId, success, error) {
+    try {
+        const data = await Client4.getWhitelist(userId);
+        success(data.ips || []);
+    } catch (err) {
+        if (error) {
+            error(err);
+        }
+    }
+}
+
+export async function adminGetAllPosts(options, success) {
+    // Custom implementation for legacy server endpoint
+    console.log('DEBUG: adminGetAllPosts called with options:', options);
+    console.log('DEBUG: JSON.stringify(options):', JSON.stringify(options));
+    const response = await Client4.doFetch(
+        `${Client4.getBaseRoute()}/posts_all`,
+        {method: 'post', body: JSON.stringify(options)}
+    );
+    success(response);
+}
+
+export async function adminRemovePostsBetween(options, success) {
+    // Custom implementation for legacy server endpoint  
+    const response = await Client4.doFetch(
+        `${Client4.getBaseRoute()}/posts_all`,
+        {method: 'delete', body: JSON.stringify(options)}
+    );
+    success(response);
+}
+
 export async function samlCertificateStatus(success, error) {
     const {data, error: err} = await dispatch(AdminActions.getSamlCertificateStatus());
     if (data && success) {

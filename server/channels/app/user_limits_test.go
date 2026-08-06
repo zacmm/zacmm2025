@@ -306,20 +306,18 @@ func TestCreateUserOrGuestSeatCountEnforcement(t *testing.T) {
 		defer th.TearDown()
 
 		userLimit := 5
-		extraUsers := 1
 		license := model.NewTestLicense("")
 		license.IsSeatCountEnforced = true
 		license.Features.Users = &userLimit
-		license.ExtraUsers = &extraUsers
 		th.App.Srv().SetLicense(license)
 
-		// Create 3 additional users to reach the hard limit of 6 (3 from InitBasic + 3)
-		// Hard limit = 5 base users + 1 extra user = 6 total
+		// Create 3 additional users to reach the grace limit of 6 (3 from InitBasic + 3)
+		// Grace limit for 5 users is 6 (5% grace period)
 		th.CreateUser()
 		th.CreateUser()
 		th.CreateUser()
 
-		// Now at hard limit - attempting to create another user should fail
+		// Now at grace limit - attempting to create another user should fail
 		user := &model.User{
 			Email:         "TestSeatCount@example.com",
 			Username:      "seat_test_user",
@@ -339,8 +337,7 @@ func TestCreateUserOrGuestSeatCountEnforcement(t *testing.T) {
 		defer th.TearDown()
 
 		userLimit := 5
-		extraUsers := 0
-		currentUserCount := int64(6) // Over limit (limit=5, hard limit=5+0=5, current=6)
+		currentUserCount := int64(6) // Over limit
 
 		mockUserStore := storemocks.UserStore{}
 		mockUserStore.On("Count", mock.Anything).Return(currentUserCount, nil)
@@ -356,7 +353,6 @@ func TestCreateUserOrGuestSeatCountEnforcement(t *testing.T) {
 		license := model.NewTestLicense("")
 		license.IsSeatCountEnforced = true
 		license.Features.Users = &userLimit
-		license.ExtraUsers = &extraUsers
 		th.App.Srv().SetLicense(license)
 
 		user := &model.User{
@@ -449,20 +445,18 @@ func TestCreateUserOrGuestSeatCountEnforcement(t *testing.T) {
 		defer th.TearDown()
 
 		userLimit := 5
-		extraUsers := 1
 		license := model.NewTestLicense("")
 		license.IsSeatCountEnforced = true
 		license.Features.Users = &userLimit
-		license.ExtraUsers = &extraUsers
 		th.App.Srv().SetLicense(license)
 
-		// Create 3 additional users to reach the hard limit of 6 (3 from InitBasic + 3)
-		// Hard limit = 5 base users + 1 extra user = 6 total
+		// Create 3 additional users to reach the grace limit of 6 (3 from InitBasic + 3)
+		// Grace limit for 5 users is 6 (5% grace period)
 		th.CreateUser()
 		th.CreateUser()
 		th.CreateUser()
 
-		// Now at hard limit - attempting to create a guest should fail
+		// Now at grace limit - attempting to create a guest should fail
 		user := &model.User{
 			Email:         "TestSeatCountGuest@example.com",
 			Username:      "seat_test_guest",
@@ -481,11 +475,9 @@ func TestCreateUserOrGuestSeatCountEnforcement(t *testing.T) {
 		defer th.TearDown()
 
 		userLimit := 5
-		extraUsers := 0
 		license := model.NewTestLicense("")
 		license.IsSeatCountEnforced = true
 		license.Features.Users = &userLimit
-		license.ExtraUsers = &extraUsers
 		th.App.Srv().SetLicense(license)
 
 		// InitBasic creates 3 users, so we're under the limit of 5

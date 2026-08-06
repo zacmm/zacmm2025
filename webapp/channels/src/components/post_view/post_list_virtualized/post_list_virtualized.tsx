@@ -4,8 +4,10 @@
 import React from 'react';
 import AutoSizer from 'react-virtualized-auto-sizer';
 
+import store from 'stores/redux_store';
 import EventEmitter from 'mattermost-redux/utils/event_emitter';
 import {getNewMessagesIndex, isDateLine, isStartOfNewMessages} from 'mattermost-redux/utils/post_list';
+import {getAllPosts} from 'mattermost-redux/selectors/entities/posts';
 
 import type {updateNewMessagesAtInChannel} from 'actions/global_actions';
 import type {CanLoadMorePosts} from 'actions/views/channel';
@@ -92,6 +94,11 @@ type Props = {
     focusedPostId?: string;
 
     shouldStartFromBottomWhenUnread: boolean;
+
+    /*
+     * Used for filtering messages by content
+     */
+    messageFilter?: string;
 
     actions: {
 
@@ -306,6 +313,43 @@ export default class PostList extends React.PureComponent<Props, State> {
 
         return nextState;
     }
+
+    filterPostIds = (postIds: string[], messageFilter?: string): string[] => {
+        if (!messageFilter || messageFilter.trim() === '') {
+            return postIds;
+        }
+
+        const filterLower = messageFilter.toLowerCase().trim();
+
+        return postIds.filter((postId) => {
+            // Keep non-post items (date separators, new message indicators, etc.)
+            if (isDateLine(postId) || isStartOfNewMessages(postId) || 
+                postId.includes('CHANNEL_INTRO_MESSAGE') || 
+                postId.includes('LOAD_') || 
+                postId.includes('MESSAGES_LOADER')) {
+                return true;
+            }
+
+            // For actual posts, we need to access the Redux store
+            try {
+                const allPosts = getAllPosts(store.getState());
+                const post = allPosts[postId];
+                if (!post) {
+                    return false;
+                }
+
+                if (!post.message) {
+                    return false;
+                }
+
+                // Filter based on message content
+                return post.message.toLowerCase().includes(filterLower);
+            } catch (error) {
+                // If we can't access the store, keep the post
+                return true;
+            }
+        });
+    };
 
     handleWindowResize = () => {
         this.showSearchHintThreshold = this.getShowSearchHintThreshold();
@@ -670,6 +714,9 @@ export default class PostList extends React.PureComponent<Props, State> {
     render() {
         const {channelId} = this.props;
         const {dynamicListStyle} = this.state;
+        
+        // Apply message filter to post list IDs
+        const filteredPostIds = this.filterPostIds(this.state.postListIds, this.props.messageFilter);
 
         return (
             <div
@@ -720,7 +767,7 @@ export default class PostList extends React.PureComponent<Props, State> {
                                             className='post-list__dynamic'
                                             height={height}
                                             width={width}
-                                            itemData={this.state.postListIds}
+                                            itemData={filteredPostIds}
                                             overscanCountForward={OVERSCAN_COUNT_FORWARD}
                                             overscanCountBackward={OVERSCAN_COUNT_BACKWARD}
                                             onScroll={this.onScroll}

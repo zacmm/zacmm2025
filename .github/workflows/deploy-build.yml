@@ -1,0 +1,239 @@
+name: Deploy Build
+
+# 建置正式環境用的產物，發布成 GitHub Release 供主機拉取。
+# 採 pull-based：CI 不連進主機，主機主動下載，因此不需開放任何 inbound port。
+#
+# 手動觸發：Actions 頁面 → Deploy Build → Run workflow
+# 主機部署：ssh mattermost_v1 → scripts/deploy/pull-deploy.sh
+
+on:
+  # 推上 main 且動到實際程式碼時自動建置。
+  # 僅建置並發布 Release，不會自動部署到正式主機——
+  # 部署仍需在主機上手動執行 pull-deploy.sh，保留人工關卡。
+  push:
+    branches: [main]
+    paths:
+      - 'server/**'
+      - 'webapp/**'
+      - '.github/workflows/deploy-build.yml'
+  workflow_dispatch:
+    inputs:
+      note:
+        description: '本次建置的說明（會顯示在 Release 內容中）'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: deploy-build
+  cancel-in-progress: false
+
+jobs:
+  build-server:
+    name: 編譯後端
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+
+      # server/go.work 被 gitignore，CI checkout 後不存在。
+      # 而 server/go.mod 依賴的是已發布的 server/public v0.1.12，沒有 replace 指向本地，
+      # 缺少 workspace 就會從 module proxy 抓到不含客製的版本，
+      # 導致 model.CELExpressionError 之類的 undefined 錯誤。
+      - name: 建立 go workspace
+        working-directory: server
+        run: |
+          go work init . ./public
+          go work edit -print
+
+      - name: 編譯 mattermost 與 mmctl
+        working-directory: server
+        env:
+          GOOS: linux
+          GOARCH: amd64
+          CGO_ENABLED: 0
+        run: |
+          set -euo pipefail
+          mkdir -p bin
+          LDFLAGS="-X 'github.com/mattermost/mattermost/server/public/model.BuildNumber=${GITHUB_RUN_NUMBER}'"
+          LDFLAGS="${LDFLAGS} -X 'github.com/mattermost/mattermost/server/public/model.BuildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)'"
+          LDFLAGS="${LDFLAGS} -X 'github.com/mattermost/mattermost/server/public/model.BuildHash=${GITHUB_SHA}'"
+
+          go build -v -trimpath \
+            -tags 'sourceavailable production' \
+            -ldflags "${LDFLAGS}" \
+            -o bin/mattermost ./cmd/mattermost
+
+          # mmctl 的 buildDate 在自己的 commands 套件裡（小寫、非 model.BuildDate），
+          # 與 server/Makefile 的 MMCTL_LDFLAGS 一致；少了它 mmctl version 會顯示 "dev"。
+          MMCTL_PKG='github.com/mattermost/mattermost/server/v8/cmd/mmctl/commands'
+          go build -v -trimpath \
+            -ldflags "-X '${MMCTL_PKG}.buildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)'" \
+            -o bin/mmctl ./cmd/mmctl
+
+      - name: 打包
+        working-directory: server
+        run: tar czf ../server-linux-amd64.tar.gz -C bin mattermost mmctl
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: server-build
+          path: server-linux-amd64.tar.gz
+          retention-days: 1
+
+  build-webapp:
+    name: 編譯前端
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      # 用 .nvmrc 而非寫死版本：專案其他 CI 都經由 .github/actions/webapp-setup
+      # 讀同一份，寫死會讓正式產物的 Node 版本與所有品質檢查用的版本不同。
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: webapp/package-lock.json
+
+      # webapp 是 npm workspaces，必須在根目錄安裝才會建立 workspace 間的連結
+      - name: 安裝相依套件
+        working-directory: webapp
+        run: npm ci
+
+      - name: 編譯
+        working-directory: webapp
+        env:
+          NODE_ENV: production
+        run: npm run build
+
+      - name: 確認產物存在
+        run: |
+          test -f webapp/channels/dist/root.html || { echo "❌ 建置產物不完整，找不到 root.html"; exit 1; }
+          echo "產物大小：$(du -sh webapp/channels/dist | cut -f1)　檔案數：$(find webapp/channels/dist -type f | wc -l)"
+
+      - name: 打包
+        run: tar czf webapp-dist.tar.gz -C webapp/channels dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: webapp-build
+          path: webapp-dist.tar.gz
+          retention-days: 1
+
+  release:
+    name: 發布 Release
+    needs: [build-server, build-webapp]
+    runs-on: ubuntu-latest
+    steps:
+      # 不做 checkout：這個 job 只需要 artifact 與 GitHub API，
+      # 而本 repo 的 .git 有 1.2GB，checkout 純屬浪費。
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: dist
+
+      - name: 產生校驗碼
+        working-directory: dist
+        run: |
+          sha256sum server-linux-amd64.tar.gz webapp-dist.tar.gz > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: 建立 Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}   # 無 checkout，gh 需靠這個判定目標 repo
+          NOTE: ${{ inputs.note }}
+        run: |
+          set -euo pipefail
+          TAG="build-$(date -u +%Y%m%d-%H%M%S)-${GITHUB_SHA::7}"
+
+          # 非 main 的建置標記為 prerelease。GitHub 的 /releases/latest API 會略過
+          # prerelease，因此 pull-deploy.sh 不帶 --tag 時不會誤抓到分支版本——
+          # 要部署未合併的分支必須明確指定 --tag，符合「需要明確意圖」的原則。
+          # 「什麼算正式版」只在這裡定義一次，避免標記與說明文字各自判斷而分歧。
+          EXTRA=()
+          TITLE="${TAG}"
+          DEPLOY_HINT="部署方式：主機執行 \`scripts/deploy/pull-deploy.sh\`"
+          if [ "${GITHUB_REF_NAME}" != "main" ]; then
+            EXTRA=(--prerelease)
+            TITLE="${TAG}（分支 ${GITHUB_REF_NAME}）"
+            DEPLOY_HINT=$(printf '⚠️ 此為分支建置（prerelease），不會被 `pull-deploy.sh` 自動選取。\n如需部署：`./scripts/deploy/pull-deploy.sh --tag %s`' "${TAG}")
+          fi
+
+          # 用 API 取 commit 資訊，省下為了一行 metadata 而 checkout 1.2GB repo
+          COMMIT_INFO=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}" \
+            --jq '"\(.sha[0:7]) \(.commit.committer.date)\n\(.commit.message | split("\n")[0])"')
+
+          {
+            echo "來源分支：\`${GITHUB_REF_NAME}\`"
+            echo "來源 commit：\`${GITHUB_SHA}\`"
+            echo ""
+            echo "\`\`\`"
+            echo "${COMMIT_INFO}"
+            echo "\`\`\`"
+            if [ -n "${NOTE}" ]; then
+              echo ""
+              echo "**說明**：${NOTE}"
+            fi
+            echo ""
+            echo "${DEPLOY_HINT}"
+          } > notes.md
+
+          # --target 讓 tag 指向實際建置的 commit。省略時 gh 會把 tag 建在預設分支上，
+          # 導致 git checkout <tag> 拿到的並非這份產物對應的原始碼。
+          gh release create "${TAG}" \
+            --target "${GITHUB_SHA}" \
+            --title "${TITLE}" \
+            --notes-file notes.md \
+            "${EXTRA[@]}" \
+            dist/server-linux-amd64.tar.gz \
+            dist/webapp-dist.tar.gz \
+            dist/SHA256SUMS
+
+          echo "✅ 已發布 ${TAG}"
+
+  deploy:
+    name: 部署到正式環境
+    needs: release
+    # 只有 push 到 main 才自動部署。
+    # workflow_dispatch（含在 main 上手動觸發）僅建置不部署，保留「只想建置」的退路；
+    # 分支建置是 prerelease，主機也不會選到。
+    if: github.event_name == 'push' && github.ref_name == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 準備 SSH 憑證
+        env:
+          KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${KEY}"   > ~/.ssh/id_deploy    && chmod 600 ~/.ssh/id_deploy
+          printf '%s\n' "${KNOWN}" > ~/.ssh/known_hosts  && chmod 600 ~/.ssh/known_hosts
+
+      - name: 執行部署
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          # 主機端 authorized_keys 對這把金鑰設了 forced command，
+          # 無論送什麼指令都只會執行 pull-deploy.sh，因此這裡不需要（也無法）帶參數。
+          # pull-deploy.sh 健康檢查失敗會自動回滾並回傳非 0，ssh 會原樣傳回退出碼。
+          ssh -i ~/.ssh/id_deploy \
+              -o StrictHostKeyChecking=yes \
+              -o BatchMode=yes \
+              -o ConnectTimeout=15 \
+              "${USER}@${HOST}"
+
+      - name: 清除憑證
+        if: always()
+        run: rm -f ~/.ssh/id_deploy

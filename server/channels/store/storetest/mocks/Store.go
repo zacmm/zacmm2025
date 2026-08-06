@@ -1413,6 +1413,46 @@ func (_m *Store) Webhook() store.WebhookStore {
 	return r0
 }
 
+// Whitelist provides a mock function with no fields
+func (_m *Store) Whitelist() store.WhitelistStore {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for Whitelist")
+	}
+
+	var r0 store.WhitelistStore
+	if rf, ok := ret.Get(0).(func() store.WhitelistStore); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(store.WhitelistStore)
+		}
+	}
+
+	return r0
+}
+
+// Invite provides a mock function with no fields
+func (_m *Store) Invite() store.InviteStore {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for Invite")
+	}
+
+	var r0 store.InviteStore
+	if rf, ok := ret.Get(0).(func() store.InviteStore); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(store.InviteStore)
+		}
+	}
+
+	return r0
+}
+
 // NewStore creates a new instance of Store. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewStore(t interface {

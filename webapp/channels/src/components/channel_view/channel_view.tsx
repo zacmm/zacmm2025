@@ -1,13 +1,14 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, {lazy} from 'react';
+import React, {lazy, useState, useCallback} from 'react';
 import {FormattedMessage} from 'react-intl';
 import type {RouteComponentProps} from 'react-router-dom';
 
 import {makeAsyncComponent} from 'components/async_load';
 import deferComponentRender from 'components/deferComponentRender';
 import {DropOverlayIdCenterChannel} from 'components/file_upload_overlay/file_upload_overlay';
+import MessageFilter from 'components/message_filter';
 import PostView from 'components/post_view';
 
 import WebSocketClient from 'client/web_websocket_client';
@@ -32,6 +33,7 @@ type State = {
     focusedPostId?: string;
     deferredPostView: any;
     waitForLoader: boolean;
+    messageFilter: string;
 };
 
 export default class ChannelView extends React.PureComponent<Props, State> {
@@ -82,6 +84,7 @@ export default class ChannelView extends React.PureComponent<Props, State> {
             focusedPostId: props.match.params.postid,
             deferredPostView: ChannelView.createDeferredPostView(),
             waitForLoader: false,
+            messageFilter: '',
         };
 
         this.channelViewRef = React.createRef();
@@ -93,6 +96,10 @@ export default class ChannelView extends React.PureComponent<Props, State> {
 
     onUpdateInputShowLoader = (v: boolean) => {
         this.setState({waitForLoader: v});
+    };
+
+    onMessageFilterChange = (filter: string) => {
+        this.setState({messageFilter: filter});
     };
 
     componentDidUpdate(prevProps: Props) {
@@ -195,9 +202,11 @@ export default class ChannelView extends React.PureComponent<Props, State> {
                 <ChannelHeader {...this.props}/>
                 {this.props.isChannelBookmarksEnabled && <ChannelBookmarks channelId={this.props.channelId}/>}
                 <ChannelBanner channelId={this.props.channelId}/>
+                <MessageFilter onFilterChange={this.onMessageFilterChange}/>
                 <DeferredPostView
                     channelId={this.props.channelId}
                     focusedPostId={this.state.focusedPostId}
+                    messageFilter={this.state.messageFilter}
                 />
                 {createPost}
             </div>

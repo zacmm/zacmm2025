@@ -62,6 +62,8 @@ type Store interface {
 	LinkMetadata() LinkMetadataStore
 	SharedChannel() SharedChannelStore
 	Draft() DraftStore
+	Whitelist() WhitelistStore
+	Invite() InviteStore
 	MarkSystemRanUnitTests()
 	Close()
 	LockToMaster()
@@ -420,6 +422,8 @@ type PostStore interface {
 	GetNthRecentPostTime(n int64) (int64, error)
 	// RefreshPostStats refreshes the various materialized views for admin console post stats.
 	RefreshPostStats() error
+	GetAllPosts(options *model.GetAllPostsOptions) (*model.PostList, int, error)
+	RemovePostsBetween(options *model.RemovePostsBetweenOptions) ([]*model.Post, error)
 }
 
 type UserStore interface {
@@ -1137,6 +1141,18 @@ type AttributesStore interface {
 	GetSubject(rctx request.CTX, ID, groupID string) (*model.Subject, error)
 	SearchUsers(rctx request.CTX, opts model.SubjectSearchOptions) ([]*model.User, int64, error)
 	GetChannelMembersToRemove(rctx request.CTX, channelID string, opts model.SubjectSearchOptions) ([]*model.ChannelMember, error)
+}
+
+type WhitelistStore interface {
+	Add(whitelistItem *model.WhitelistItem) error
+	Delete(whitelistItem *model.WhitelistItem) error
+	GetByUserId(userId string) ([]string, error)
+}
+
+type InviteStore interface {
+	Add(inviteItem *model.InviteItem) error
+	Delete(inviteId string) error
+	GetTeamId(inviteId string) (string, error)
 }
 
 // ChannelSearchOpts contains options for searching channels.
