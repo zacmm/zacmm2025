@@ -366,6 +366,10 @@ func Init(srv *app.Server) (*API, error) {
 	api.InitAuditLogging()
 	api.InitAccessControlPolicy()
 
+	// --- fork 客製端點（升級後請確認這個區塊仍存在）---
+	api.InitWhitelist()
+	api.InitTeamInvite()
+
 	// If we allow testing then listen for manual testing URL hits
 	if *srv.Config().ServiceSettings.EnableTesting {
 		api.BaseRoutes.Root.Handle("/manualtest", api.APIHandler(manualtesting.ManualTest)).Methods(http.MethodGet)
