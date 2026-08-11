@@ -369,6 +369,7 @@ func Init(srv *app.Server) (*API, error) {
 	// --- fork 客製端點（升級後請確認這個區塊仍存在）---
 	api.InitWhitelist()
 	api.InitTeamInvite()
+	api.InitPostsAdmin()
 
 	// If we allow testing then listen for manual testing URL hits
 	if *srv.Config().ServiceSettings.EnableTesting {

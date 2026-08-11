@@ -52,11 +52,18 @@ audit.AddEventParameter(rec, ...)  →  model.AddEventParameterToAuditRec(rec, .
 
 修復沒有把 handler 放回原位，而是搬進 fork 專屬檔案：
 
-| | 原本 | 現在 |
+修復沒有把 handler 放回原位，而是搬進 fork 專屬檔案。同一輪把 `api4/post.go`
+也一併處理掉——它是同一個病灶，下次升級一定輪到它。
+
+| 功能 | 原本 | 現在 |
 |---|---|---|
-| 白名單 | `api4/user.go` 內 +135 行 | `api4/whitelist.go`（獨立檔） |
-| 邀請碼 | `api4/team.go` 內 +48 行 | `api4/team_invite.go`（獨立檔） |
-| 上游檔案足跡 | **183 行** | **`api.go` 的 3 行註冊** |
+| 白名單 | `api4/user.go` 內 +135 行 | `api4/whitelist.go` |
+| 邀請碼 | `api4/team.go` 內 +48 行 | `api4/team_invite.go` |
+| 管理員訊息篩選 | `api4/post.go` 內 +89 行 | `api4/posts_admin.go` |
+
+`api4/` 底下上游檔案的客製足跡：**283 行 → 7 行**
+（`api.go` 的路由前綴 4 行 + 註冊 3 行；`user.go` / `team.go` / `post.go`
+現在與上游 v10.11.0 逐字元相同）。
 
 註冊集中在 `api4/api.go` 的 `InitAPI()` 尾端並用註解標記：
 
@@ -64,13 +71,12 @@ audit.AddEventParameter(rec, ...)  →  model.AddEventParameterToAuditRec(rec, .
 // --- fork 客製端點（升級後請確認這個區塊仍存在）---
 api.InitWhitelist()
 api.InitTeamInvite()
+api.InitPostsAdmin()
 ```
 
 這是上游自己的既有模式（`InitIPFiltering()`、`InitLimits()` 都是獨立檔案）。
 效果：下次升級只要看 `git diff <tag> HEAD -- server/channels/api4/api.go`
 就能確認客製端點是否還在，不必在 3,700 行的 `user.go` 裡找。
-
-**`api4/post.go`（管理員訊息篩選）仍是就地插入，下次升級輪到它。** 建議比照辦理。
 
 ### 事後的系統性複查
 
@@ -90,8 +96,9 @@ api.InitTeamInvite()
 
 | 檔案 | 行數 | 功能 |
 |---|---|---|
-| `server/channels/api4/whitelist.go` | 124 | 白名單 API（3 個端點） |
-| `server/channels/api4/team_invite.go` | 46 | 邀請碼 API |
+| `server/channels/api4/whitelist.go` | 128 | 白名單 API（3 個端點） |
+| `server/channels/api4/posts_admin.go` | 107 | 管理員訊息篩選 API（`/posts_all`） |
+| `server/channels/api4/team_invite.go` | 48 | 邀請碼 API（⚠️ 見下方「已知死碼」） |
 | `server/channels/app/whitelist.go` | 193 | IP 白名單 |
 | `server/channels/store/sqlstore/whitelist_store.go` | 73 | 白名單 store |
 | `server/public/model/whitelist_item.go` | 38 | 白名單 model |
@@ -115,7 +122,6 @@ api.InitTeamInvite()
 | 檔案 | 差異 | 客製內容 |
 |---|---|---|
 | `server/channels/store/sqlstore/post_store.go` | +226/-26 | **中文全文搜尋**（`MATCH...AGAINST`）、管理員訊息篩選查詢 |
-| `server/channels/api4/post.go` | +89 | 管理員訊息篩選 API（`/posts_all`）⚠️ **上游檔案，下次升級高風險** |
 | `server/channels/app/post.go` | +99 | 管理員訊息篩選邏輯 ⚠️ **上游檔案** |
 | `server/channels/web/handlers.go` | +85 | IP 白名單攔截中介層 ⚠️ **上游檔案** |
 | `server/channels/api4/api.go` | +5 | `PostsAll` 路由前綴 + 客製端點註冊區塊 |
@@ -172,7 +178,39 @@ done
 - [ ] emoji 反應明細可展開
 - [ ] 個人設定 → 安全性 → 刪除帳號連結存在（若有設定 `DeleteAccountLink`）
 
-## 四、備份分支
+## 四、已知死碼：團隊邀請碼客製（2026-08-11 查證）
+
+`api4/team_invite.go` 的 `/teams/{id}/invite_id` 端點**從未生效過**，
+但實際的邀請碼功能是正常的——因為前端 fallback 到了上游原生機制。
+
+**不要「順手修好」這個端點，會讓功能變差。** 詳情：
+
+```
+前端 TeamInviteSection（127 行）
+  ├─ 呼叫 actions.getTeamInviteId(...)   ← 此 action 不存在
+  └─ 元件本身沒有任何檔案 import          ← 從未被渲染
+
+前端 invitation_modal.tsx
+  └─ Client4.getInviteId → GET /teams/{id}/invite
+                                    ↕ 路徑不符（升級前就如此）
+後端 註冊的是                    GET /teams/{id}/invite_id
+  └─ 404 → catch → 改用 currentTeam.invite_id   ← 實際生效的是這條
+
+後端 app.GetInviteId → 寫入 Invites 表
+       ├─ Invite().GetTeamId()  app 層呼叫者 0
+       └─ Invite().Delete()     app 層呼叫者 0    ← 只寫不讀
+兌換流程走的是 Team().GetByInviteId() 查 Teams.InviteId（4 處）
+```
+
+**為什麼只對齊路由會更糟**：端點回傳的碼寫進 `Invites` 表，
+但兌換查的是 `Teams.InviteId`。改成 `/invite` 之後，使用者會從
+「靜默拿到可用的碼」變成「拿到一個貼給別人無效的碼」。
+
+要讓它按原設計運作，需要補齊：`getTeamInviteId` action、
+`TeamInviteSection` 的掛載點、以及讓兌換流程讀 `Invites` 表。
+在釐清當初的需求（一次性邀請碼？可撤銷連結？）之前不建議動。
+
+## 五、備份分支
 
 | 分支 | 用途 |
 |---|---|
