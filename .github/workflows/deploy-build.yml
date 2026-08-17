@@ -35,11 +35,11 @@ jobs:
     name: 編譯後端
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 1
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: server/go.mod
           cache-dependency-path: server/go.sum
@@ -83,7 +83,7 @@ jobs:
         working-directory: server
         run: tar czf ../server-linux-amd64.tar.gz -C bin mattermost mmctl
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: server-build
           path: server-linux-amd64.tar.gz
@@ -93,13 +93,13 @@ jobs:
     name: 編譯前端
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 1
 
       # 用 .nvmrc 而非寫死版本：專案其他 CI 都經由 .github/actions/webapp-setup
       # 讀同一份，寫死會讓正式產物的 Node 版本與所有品質檢查用的版本不同。
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -124,7 +124,7 @@ jobs:
       - name: 打包
         run: tar czf webapp-dist.tar.gz -C webapp/channels dist
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: webapp-build
           path: webapp-dist.tar.gz
@@ -137,7 +137,7 @@ jobs:
     steps:
       # 不做 checkout：這個 job 只需要 artifact 與 GitHub API，
       # 而本 repo 的 .git 有 1.2GB，checkout 純屬浪費。
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           merge-multiple: true
           path: dist
